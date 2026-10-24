@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b12">
+  <title>Creator Tycoon — YouTube Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--bg:#090a10;--panel:#12141f;--panel2:#171a28;--line:#292d40;--text:#f5f6fc;--muted:#9ca3ba;--purple:#9b87ff;--pink:#ff5da8;--green:#67e8b0;--yellow:#ffd166;--red:#ff6b7b;--radius:18px}
+    *{box-sizing:border-box} html{background:var(--bg)} body{margin:0;color:var(--text);background:radial-gradient(ellipse at 75% -20%,#30235b 0,transparent 36%),radial-gradient(ellipse at -10% 45%,#172747 0,transparent 30%),var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+    button,input,select{font:inherit} button{cursor:pointer;border:0} button:disabled{opacity:.5;cursor:not-allowed} .wrap{max-width:1440px;margin:auto;padding:24px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.brand-icon{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#8d6bff,#ff5da8);display:grid;place-items:center;font-size:22px;box-shadow:0 8px 30px #9b87ff33}.brand h1{font-size:20px;margin:0;letter-spacing:-.5px}.brand p{color:var(--muted);margin:3px 0 0;font-size:12px}.top-right{display:flex;align-items:center;gap:10px}.status{font-size:12px;border:1px solid var(--line);padding:9px 12px;border-radius:999px;background:#11131dcf;color:var(--muted);display:flex;align-items:center;gap:8px}.dot{width:7px;height:7px;background:var(--yellow);border-radius:50%}.status.online .dot{background:var(--green);box-shadow:0 0 12px #67e8b0}.ghost{background:#202335;color:#e8e9f5;border:1px solid #353951;border-radius:11px;padding:10px 13px;font-weight:650;font-size:12px}.ghost:hover{background:#2b2f45}
+    .layout{display:grid;grid-template-columns:220px minmax(360px,1fr) 315px;gap:18px;align-items:start}.sidebar,.panel{background:linear-gradient(180deg,#151724f2,#11131df2);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 15px 55px #0002}.sidebar{padding:17px;position:sticky;top:18px}.profile{display:flex;gap:11px;align-items:center;padding:5px 3px 16px;border-bottom:1px solid var(--line)}.avatar{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#3a7bd5,#8e44ad);display:grid;place-items:center;font-size:20px}.profile-name{font-weight:750;font-size:13px;overflow-wrap:anywhere}.small{font-size:11px;color:var(--muted);margin-top:4px}.nav{display:grid;gap:7px;margin-top:17px}.nav button{display:flex;align-items:center;gap:11px;text-align:left;padding:12px;border-radius:12px;background:transparent;color:#b5bad0;font-weight:650;font-size:13px}.nav button.active,.nav button:hover{background:#292442;color:#fff}.nav .ico{width:21px;text-align:center;font-size:16px}.side-note{margin-top:19px;background:#1a1d2c;border-radius:13px;padding:13px}.side-note strong{font-size:12px}.side-note p{font-size:11px;line-height:1.55;color:var(--muted);margin:7px 0 0}
+    .main{min-width:0;display:grid;gap:17px}.hero{overflow:hidden;position:relative;padding:25px;background:linear-gradient(112deg,#252048,#181929 58%,#22182f);border:1px solid #38304f;border-radius:var(--radius);min-height:190px}.hero:after{content:"▶";position:absolute;right:24px;top:24px;width:96px;height:96px;border-radius:30px;transform:rotate(-10deg);display:grid;place-items:center;font-size:47px;color:#fff;background:linear-gradient(135deg,#a18aff,#ff5ba8);box-shadow:0 18px 65px #9b87ff4a}.eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:800;color:#c1b6ff;text-transform:uppercase}.hero h2{font-size:clamp(24px,3vw,35px);line-height:1.1;letter-spacing:-1.1px;margin:12px 120px 9px 0}.hero p{font-size:13px;color:#c4c5dc;max-width:440px;line-height:1.55;margin:0}.hero-badges{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}.pill{font-size:11px;border:1px solid #ffffff24;background:#ffffff0c;padding:6px 9px;border-radius:999px;color:#e6e1ff}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.stat{padding:15px 16px;background:var(--panel);border:1px solid var(--line);border-radius:15px;min-width:0}.stat-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11px;gap:6px}.stat-icon{font-size:17px}.stat-number{font-size:clamp(18px,2vw,25px);font-weight:800;letter-spacing:-.7px;margin-top:11px;overflow-wrap:anywhere}.stat-sub{font-size:10px;color:var(--muted);margin-top:5px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}.section-head h3{margin:0;font-size:15px;letter-spacing:-.3px}.muted{color:var(--muted)}.tag{font-size:10px;font-weight:750;color:#c9c0ff;background:#292343;border-radius:7px;padding:6px 8px}.panel{padding:19px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field{display:grid;gap:7px;min-width:0}.field.full{grid-column:1/-1}.field label{font-size:11px;color:#bcc0d3;font-weight:700}.input{width:100%;background:#0c0e17;color:#f5f6fc;border:1px solid #31354a;outline:0;border-radius:10px;padding:11px 12px;min-height:42px}.input:focus{border-color:#8c78f0;box-shadow:0 0 0 3px #8c78f01c}.range-line{display:flex;align-items:center;gap:12px}.range-line input{width:100%;accent-color:var(--purple)}.range-value{min-width:50px;text-align:right;color:#e0d9ff;font-size:12px;font-weight:800}.hint{color:var(--muted);font-size:10px;line-height:1.45}.primary{color:#fff;background:linear-gradient(100deg,#8a6cf1,#b36be9 50%,#ec68b2);padding:12px 15px;border-radius:11px;font-size:12px;font-weight:800;box-shadow:0 9px 25px #9b87ff22;transition:transform .15s}.primary:hover{transform:translateY(-1px);filter:brightness(1.08)}.full-btn{width:100%;margin-top:15px}.primary.red{background:linear-gradient(100deg,#ff5c7b,#c34e9c)}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric-mini{border:1px solid var(--line);background:#0f111b;border-radius:12px;padding:12px}.metric-mini b{font-size:15px}.metric-mini div{font-size:10px;color:var(--muted);margin-bottom:7px}.right{display:grid;gap:17px;min-width:0}.rank-list{display:grid;gap:7px}.rank-row{display:grid;grid-template-columns:25px 1fr auto;align-items:center;gap:9px;padding:9px;border-radius:11px;background:#0d0f18;border:1px solid #232638}.rank-num{font-size:11px;font-weight:850;color:#a6abc0;text-align:center}.rank-num.gold{color:#ffd166}.rank-num.silver{color:#ccd3e1}.rank-num.bronze{color:#db9f75}.rank-name{font-size:11px;font-weight:750;overflow-wrap:anywhere}.rank-extra{font-size:10px;color:var(--muted);margin-top:4px}.rank-subs{font-weight:800;font-size:11px;text-align:right;white-space:nowrap}.rank-row.me{border-color:#8e78f4;background:#201b35}.empty{padding:18px 12px;border:1px dashed #36394f;border-radius:13px;color:var(--muted);font-size:12px;line-height:1.55;text-align:center}.feed{display:grid;gap:10px}.feed-item{padding:10px 11px;border-left:2px solid #8e78f4;background:#0e1019;border-radius:0 9px 9px 0}.feed-item.bad{border-color:var(--pink)}.feed-item p{font-size:11px;line-height:1.45;margin:0;color:#d7d9e7;overflow-wrap:anywhere}.feed-item time{display:block;color:#7f859d;font-size:9px;margin-top:6px}.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);max-width:min(92vw,560px);padding:12px 16px;background:#202337;border:1px solid #464a65;border-radius:12px;color:#fff;font-size:12px;box-shadow:0 20px 60px #0008;z-index:20;display:none}.toast.show{display:block}.overlay{position:fixed;inset:0;z-index:30;background:#05060bd9;backdrop-filter:blur(10px);display:none;place-items:center;padding:18px}.overlay.show{display:grid}.modal{width:min(100%,530px);max-height:90vh;overflow:auto;background:#151724;border:1px solid #34374c;border-radius:20px;padding:23px;box-shadow:0 30px 100px #0009}.modal h2{font-size:22px;margin:0 0 8px}.modal p{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 18px}.modal .field{margin-bottom:13px}.modal a{color:#c7baff}.warning{border:1px solid #51442c;background:#292316;color:#e7d5a3;font-size:11px;line-height:1.5;padding:11px;border-radius:10px;margin:12px 0}.foot{padding:8px;text-align:center;color:#72788f;font-size:10px}.hidden{display:none!important}.offline-banner{padding:12px 14px;border:1px solid #5f4b2e;background:#211c12;border-radius:12px;color:#dec998;font-size:12px;line-height:1.5}.table-title{display:flex;justify-content:space-between;gap:10px;align-items:center}.my-rank{font-size:10px;color:#d3c8ff;background:#2a2345;padding:7px 9px;border-radius:9px;white-space:nowrap}
+    @media(max-width:1150px){.layout{grid-template-columns:190px minmax(0,1fr)}.right{grid-column:2;grid-template-columns:1fr 1fr}.leader-panel{grid-row:span 2}.sidebar{grid-row:span 2}}
+    @media(max-width:760px){.wrap{padding:13px}.top{align-items:flex-start}.top-right{flex-wrap:wrap;justify-content:flex-end}.status{display:none}.layout{grid-template-columns:1fr}.sidebar{position:static}.profile{padding-bottom:10px}.nav{grid-template-columns:repeat(3,1fr);margin-top:10px}.nav button{justify-content:center;padding:10px 5px;font-size:11px;gap:5px;flex-direction:column}.side-note{display:none}.right{grid-column:auto;grid-template-columns:1fr}.hero{padding:20px;min-height:175px}.hero:after{width:61px;height:61px;border-radius:19px;font-size:28px;right:15px;top:15px}.hero h2{margin-right:65px;font-size:25px}.hero p{font-size:12px}.stats{gap:7px}.stat{padding:12px 10px}.stat-top{font-size:9px}.stat-number{font-size:18px}.stat-sub{font-size:9px}.panel{padding:15px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><div class="brand-icon">▶</div><div><h1>CREATOR <span style="color:var(--purple)">TYCOON</span></h1><p>Construis ta chaîne. Domine le classement.</p></div></div>
+      <div class="top-right"><div class="status" id="connectionStatus"><span class="dot"></span><span id="connectionText">Serveur non configuré</span></div><button class="ghost" id="settingsBtn">⚙ Connexion serveur</button></div>
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="profile"><div class="avatar">🎬</div><div style="min-width:0"><div class="profile-name" id="sidebarName">Créateur non connecté</div><div class="small" id="sidebarLevel">Connecte-toi pour jouer</div></div></div>
+        <nav class="nav">
+          <button class="active" data-scroll="studio"><span class="ico">📹</span>Studio</button>
+          <button data-scroll="leaderboard"><span class="ico">🏆</span>Classement</button>
+          <button data-scroll="badbuzz"><span class="ico">🧨</span>Bad buzz</button>
+        </nav>
+        <div class="side-note"><strong>🌐 Vrai classement en ligne</strong><p>Les abonnés et les scores proviennent de la base partagée. Aucun concurrent fictif n'est ajouté.</p></div>
+      </aside>
+
+      <main class="main">
+        <section class="hero">
+          <div class="eyebrow">Saison en cours · <span id="seasonLabel">en attente du serveur</span></div>
+          <h2>Deviens le prochain<br>roi de la plateforme.</h2>
+          <p>Crée des vidéos, maîtrise les tendances, gagne des abonnés et grimpe dans le classement des vrais joueurs connectés.</p>
+          <div class="hero-badges"><span class="pill" id="trendPill">📈 Tendance : —</span><span class="pill" id="formatPill">🔥 Format : —</span><span class="pill" id="moodPill">🌍 Marché : —</span></div>
+        </section>
+        <div id="offlineBanner" class="offline-banner">Le classement en ligne n'est pas encore connecté. Clique sur <b>Connexion serveur</b>, puis configure ton projet Supabase pour rejoindre les autres joueurs.</div>
+        <section class="stats">
+          <div class="stat"><div class="stat-top"><span>Abonnés</span><span class="stat-icon">👥</span></div><div class="stat-number" id="statSubs">—</div><div class="stat-sub" id="statRank">Rang mondial : —</div></div>
+          <div class="stat"><div class="stat-top"><span>Trésorerie</span><span class="stat-icon">💸</span></div><div class="stat-number" id="statCash">—</div><div class="stat-sub">Revenus − production − promo</div></div>
+          <div class="stat"><div class="stat-top"><span>Vues cumulées</span><span class="stat-icon">👁️</span></div><div class="stat-number" id="statViews">—</div><div class="stat-sub" id="statVideos">Vidéos publiées : —</div></div>
+        </section>
+        <section class="panel" id="studio">
+          <div class="section-head"><h3>🎥 Publier une vidéo</h3><span class="tag">STUDIO</span></div>
+          <form id="videoForm">
+            <div class="form-grid">
+              <div class="field full"><label for="videoTitle">Titre de la vidéo</label><input class="input" id="videoTitle" maxlength="60" minlength="3" placeholder="Ex. J'ai testé le setup à 100 €…" required></div>
+              <div class="field"><label for="topic">Thématique</label><select class="input" id="topic"><option value="gaming">🎮 Gaming</option><option value="humour">😂 Humour</option><option value="musique">🎵 Musique</option><option value="sport">🏅 Sport</option><option value="tech">🧠 Tech</option><option value="cuisine">🍜 Cuisine</option><option value="lifestyle">✨ Lifestyle</option></select></div>
+              <div class="field"><label for="format">Format</label><select class="input" id="format"><option value="short">⚡ Short</option><option value="long">🎬 Vidéo longue</option><option value="live">🔴 Live</option></select></div>
+              <div class="field full"><label for="quality">Qualité de production</label><div class="range-line"><input id="quality" type="range" min="1" max="5" value="3"><span class="range-value" id="qualityValue">3 / 5</span></div><div class="hint">Une meilleure qualité augmente le potentiel de vues et la conversion en abonnés, mais coûte plus cher.</div></div>
+              <div class="field full"><label for="promo">Budget de promotion</label><div class="range-line"><input id="promo" type="range" min="0" max="500" step="50" value="100"><span class="range-value" id="promoValue">100 €</span></div><div class="hint">La promotion élargit l'audience, sans garantir un succès. Les tendances du serveur peuvent changer selon l'activité des joueurs.</div></div>
+            </div>
+            <button class="primary full-btn" id="publishBtn" type="submit">🚀 Publier la vidéo</button>
+          </form>
+        </section>
+        <section class="panel" id="badbuzz">
+          <div class="section-head"><h3>🧨 Lancer un bad buzz</h3><span class="tag" style="background:#3a1f31;color:#ffacc9">RISQUÉ</span></div>
+          <p class="muted" style="font-size:11px;line-height:1.55;margin:0 0 15px">Déclenche une polémique de jeu contre un créateur réel du classement. Un succès peut lui faire perdre des abonnés, mais un échec nuit à ta réputation. Actions limitées par un délai de récupération.</p>
+          <form id="badBuzzForm">
+            <div class="form-grid">
+              <div class="field full"><label for="target">Cible (joueur connecté)</label><select class="input" id="target" required><option value="">Chargement du classement…</option></select></div>
+              <div class="field full"><label for="claim">Type de polémique (prédéfini)</label><select class="input" id="claim"><option value="copie">Accusation de copier le contenu</option><option value="pub">Soupçon de publicité cachée</option><option value="ego">Drama après une interview</option></select></div>
+            </div>
+            <button class="primary red full-btn" id="badBuzzBtn" type="submit">Lancer la polémique</button>
+            <div class="hint" style="margin-top:10px">Ces accusations sont des événements fictifs de gameplay, pas des déclarations réelles.</div>
+          </form>
+        </section>
+        <div class="foot">Creator Tycoon · Progression partagée avec les joueurs du même serveur</div>
+      </main>
+
+      <aside class="right">
+        <section class="panel leader-panel" id="leaderboard">
+          <div class="section-head"><div><h3>🏆 Classement mondial</h3><div class="small">Trié par abonnés · données en ligne</div></div><span class="tag">LIVE</span></div>
+          <div class="table-title" style="margin-bottom:12px"><span class="muted" style="font-size:10px" id="playerCount">0 joueur</span><span class="my-rank" id="myRankBadge">Ton rang : —</span></div>
+          <div class="rank-list" id="rankList"><div class="empty">Pas encore connecté à la base. Le classement affichera les autres joueurs ayant rejoint ce serveur.</div></div>
+        </section>
+        <section class="panel">
+          <div class="section-head"><h3>📡 Activité du serveur</h3><span class="tag">FIL GLOBAL</span></div>
+          <div class="feed" id="activityFeed"><div class="empty">Les publications et bad buzz des joueurs apparaîtront ici après connexion.</div></div>
+        </section>
+        <section class="panel">
+          <div class="section-head"><h3>🧠 Conseils du marché</h3></div>
+          <div class="feed">
+            <div class="feed-item"><p><b>Surveille la tendance.</b> Les vidéos dans la thématique en vogue peuvent obtenir plus de vues.</p></div>
+            <div class="feed-item"><p><b>Calcule tes coûts.</b> Une vidéo très chère peut te faire perdre de l'argent si elle ne décolle pas.</p></div>
+            <div class="feed-item bad"><p><b>Le bad buzz est risqué.</b> Une mauvaise manœuvre peut réduire ta réputation et tes abonnés.</p></div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal">
+      <h2 id="settingsTitle">🌐 Connexion au classement réel</h2>
+      <p>Pour réunir de vrais joueurs, crée un projet Supabase gratuit, exécute le fichier <b>setup.sql</b>, puis copie l'URL et la clé publique de ton projet ci-dessous. La clé secrète/service_role ne doit jamais être mise dans le navigateur.</p>
+      <div class="field"><label for="supabaseUrl">Project URL</label><input class="input" id="supabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="url"></div>
+      <div class="field"><label for="supabaseKey">Publishable key / anon key</label><input class="input" id="supabaseKey" placeholder="sb_publishable_… ou ancienne clé anon" autocomplete="off"></div>
+      <div class="warning">Le classement ne sera pas simulé : sans une connexion réussie à ta base, les scores en ligne resteront indisponibles. Active aussi les connexions anonymes dans Authentication → Sign In / Providers.</div>
+      <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="primary" id="saveConnectBtn">Enregistrer et connecter</button><button class="ghost" id="closeSettingsBtn">Fermer</button><button class="ghost" id="disconnectBtn" style="margin-left:auto">Effacer la configuration</button></div>
+      <p style="margin:16px 0 0">Guide : <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">ouvrir le tableau de bord Supabase ↗</a></p>
+    </div>
+  </div>
+  <div class="overlay" id="nameOverlay" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
+    <div class="modal">
+      <h2 id="nameTitle">Choisis ton pseudo de créateur</h2>
+      <p>Ce nom sera visible par les autres joueurs dans le classement et le fil d'activité. Ne mets pas d'informations personnelles.</p>
+      <form id="nameForm"><div class="field"><label for="creatorName">Pseudo (3 à 20 caractères)</label><input class="input" id="creatorName" minlength="3" maxlength="20" pattern="[A-Za-zÀ-ÿ0-9 _.-]{3,20}" required placeholder="PixelNova"></div><button class="primary full-btn" type="submit">Créer ma chaîne</button></form>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      'use strict';
+      const CONFIG_KEY = 'creator-tycoon-supabase-config-v1';
+      const $ = (id) => document.getElementById(id);
+      let client = null, currentUser = null, creator = null, world = null, leaderboard = [], refreshTimer = null, realtimeChannel = null, isBusy = false;
+      const topicNames = {gaming:'Gaming', humour:'Humour', musique:'Musique', sport:'Sport', tech:'Tech', cuisine:'Cuisine', lifestyle:'Lifestyle'};
+      const formatNames = {short:'Shorts', long:'vidéos longues', live:'Lives'};
+      const claimNames = {copie:'Copie de contenu', pub:'Publicité cachée', ego:'Drama après une interview'};
+      const money = n => (Number(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:0}) + ' €';
+      const compact = n => Intl.NumberFormat('fr-FR',{notation:'compact',maximumFractionDigits:1}).format(Number(n)||0);
+      function showToast(message, bad=false){const el=$('toast');el.textContent=message;el.style.borderColor=bad?'#a94d62':'#464a65';el.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove('show'),4500)}
+      function setStatus(ok, text){$('connectionStatus').classList.toggle('online',!!ok);$('connectionText').textContent=text}
+      function showSettings(){const saved=loadConfig();$('supabaseUrl').value=saved?.url||'';$('supabaseKey').value=saved?.key||'';$('settingsOverlay').classList.add('show')}
+      function loadConfig(){try{return JSON.parse(localStorage.getItem(CONFIG_KEY)||'null')}catch{return null}}
+      function setBusy(b){isBusy=b;$('publishBtn').disabled=b;$('badBuzzBtn').disabled=b;$('saveConnectBtn').disabled=b;$('publishBtn').textContent=b?'Traitement…':'🚀 Publier la vidéo';}
+      function formatCash(n){return money(n)}
+      function formatTime(s){const d=new Date(s);return Number.isNaN(d.getTime())?'à l’instant':d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+      function updateStats(){
+        if(!creator){$('statSubs').textContent='—';$('statCash').textContent='—';$('statViews').textContent='—';$('statRank').textContent='Rang mondial : —';$('statVideos').textContent='Vidéos publiées : —';$('sidebarName').textContent='Créateur non connecté';$('sidebarLevel').textContent='Connecte-toi pour jouer';$('myRankBadge').textContent='Ton rang : —';return;}
+        $('sidebarName').textContent=creator.name;$('sidebarLevel').textContent=`Réputation : ${creator.reputation}/100`;$('statSubs').textContent=compact(creator.subscribers);$('statCash').textContent=formatCash(creator.cash);$('statViews').textContent=compact(creator.total_views);$('statVideos').textContent=`Vidéos publiées : ${creator.videos_count}`;
+        const idx=leaderboard.findIndex(c=>c.user_id===creator.user_id);const rank=idx<0?'—':`#${idx+1}`;$('statRank').textContent=`Rang mondial : ${rank}`;$('myRankBadge').textContent=`Ton rang : ${rank}`;
+      }
+      function updateWorld(){if(!world)return;$('seasonLabel').textContent=`semaine ${world.week_num}`;$('trendPill').textContent=`📈 Tendance : ${topicNames[world.trend_topic]||world.trend_topic}`;$('formatPill').textContent=`🔥 Format : ${formatNames[world.hot_format]||world.hot_format}`;const mood=Number(world.market_mood||1);$('moodPill').textContent=`🌍 Marché : ${mood>1.2?'en hausse':mood<.85?'difficile':'stable'} (${mood.toFixed(2)}×)`}
+      function renderLeaderboard(){
+        const list=$('rankList');list.replaceChildren();$('playerCount').textContent=`${leaderboard.length} joueur${leaderboard.length===1?'':'s'}`;
+        if(!leaderboard.length){const d=document.createElement('div');d.className='empty';d.textContent=client?'Aucun créateur dans ce serveur. Crée ta chaîne pour ouvrir le classement.':'Connexion requise : aucun faux score n’est affiché.';list.append(d);updateStats();renderTargetOptions();return;}
+        leaderboard.slice(0,20).forEach((c,i)=>{const row=document.createElement('div');row.className='rank-row'+(creator&&c.user_id===creator.user_id?' me':'');const rank=document.createElement('div');rank.className='rank-num '+(i===0?'gold':i===1?'silver':i===2?'bronze':'');rank.textContent=String(i+1);const meta=document.createElement('div');const name=document.createElement('div');name.className='rank-name';name.textContent=c.name+(creator&&c.user_id===creator.user_id?' · toi':'');const extra=document.createElement('div');extra.className='rank-extra';extra.textContent=`${compact(c.total_views)} vues · Rép. ${c.reputation}`;meta.append(name,extra);const subs=document.createElement('div');subs.className='rank-subs';subs.textContent=compact(c.subscribers);row.append(rank,meta,subs);list.append(row)});
+        updateStats();renderTargetOptions();
+      }
+      function renderTargetOptions(){const select=$('target');const old=select.value;select.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choisis un joueur dans le classement';select.append(placeholder);leaderboard.filter(c=>!creator||c.user_id!==creator.user_id).forEach(c=>{const o=document.createElement('option');o.value=c.user_id;o.textContent=`${c.name} · ${compact(c.subscribers)} abonnés`;select.append(o)});if([...select.options].some(o=>o.value===old))select.value=old; if(!select.options.length||select.options.length===1){select.options[0].textContent='Aucun autre joueur disponible';$('badBuzzBtn').disabled=true}else if(!isBusy){$('badBuzzBtn').disabled=false}}
+      function renderFeed(rows){const root=$('activityFeed');root.replaceChildren();if(!rows||!rows.length){const d=document.createElement('div');d.className='empty';d.textContent='Pas encore d’activité. La première publication lancera le fil global.';root.append(d);return;}rows.forEach(e=>{const item=document.createElement('div');item.className='feed-item'+(e.event_type==='badbuzz'?' bad':'');const p=document.createElement('p');p.textContent=e.message;const time=document.createElement('time');time.textContent=formatTime(e.created_at);item.append(p,time);root.append(item)})}
+      async function loadCreator(){if(!client||!currentUser)return;const {data,error}=await client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle();if(error)throw error;creator=data;updateStats();if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show')}
+      async function refreshAll(){if(!client)return;try{
+        const [worldRes,creatorRes,rankRes,eventRes]=await Promise.all([
+          client.from('world_state').select('*').eq('id',1).single(),
+          currentUser?client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle():Promise.resolve({data:null,error:null}),
+          client.from('creators').select('user_id,name,subscribers,total_views,videos_count,reputation,cash,created_at').order('subscribers',{ascending:false}).order('total_views',{ascending:false}).limit(100),
+          client.from('game_events').select('id,event_type,message,created_at').order('created_at',{ascending:false}).limit(8)
+        ]);
+        if(worldRes.error)throw worldRes.error;if(creatorRes.error)throw creatorRes.error;if(rankRes.error)throw rankRes.error;if(eventRes.error)throw eventRes.error;
+        world=worldRes.data;creator=creatorRes.data;leaderboard=rankRes.data||[];updateWorld();renderLeaderboard();renderFeed(eventRes.data||[]);$('offlineBanner').classList.add('hidden');setStatus(true,`En ligne · ${leaderboard.length} joueurs`);if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show');
+      }catch(err){console.error(err);setStatus(false,'Erreur de synchronisation');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='La connexion au serveur a échoué : '+(err.message||'vérifie ton projet et le fichier setup.sql');throw err;}}
+      async function connect(url,key){
+        if(!window.supabase||!window.supabase.createClient)throw new Error('La bibliothèque Supabase ne s’est pas chargée. Vérifie ta connexion internet puis recharge la page.');
+        if(!url.startsWith('https://')||!url.includes('.supabase.co'))throw new Error('URL Supabase invalide. Elle ressemble à https://xxxx.supabase.co');
+        if(!key.trim())throw new Error('Colle la clé publique (publishable/anon) de ton projet.');
+        if(client){try{await client.auth.signOut()}catch{}}
+        client=window.supabase.createClient(url.trim().replace(/\/$/,''),key.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+        setStatus(false,'Connexion en cours…');
+        const {data:sessionData,error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;
+        if(sessionData.session){currentUser=sessionData.session.user}else{const {data,error}=await client.auth.signInAnonymously();if(error)throw error;currentUser=data.user}
+        $('settingsOverlay').classList.remove('show');
+        try{await refreshAll()}catch(e){throw e}
+        if(realtimeChannel){try{await client.removeChannel(realtimeChannel)}catch{}}
+        realtimeChannel=client.channel('creator-tycoon-live').on('postgres_changes',{event:'*',schema:'public',table:'creators'},()=>refreshAll()).on('postgres_changes',{event:'*',schema:'public',table:'world_state'},()=>refreshAll()).on('postgres_changes',{event:'*',schema:'public',table:'game_events'},()=>refreshAll()).subscribe();
+        clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,20000);
+      }
+      $('settingsBtn').addEventListener('click',showSettings);
+      $('closeSettingsBtn').addEventListener('click',()=>$('settingsOverlay').classList.remove('show'));
+      $('settingsOverlay').addEventListener('click',e=>{if(e.target===$('settingsOverlay'))$('settingsOverlay').classList.remove('show')});
+      $('saveConnectBtn').addEventListener('click',async()=>{const url=$('supabaseUrl').value.trim(),key=$('supabaseKey').value.trim();try{setBusy(true);localStorage.setItem(CONFIG_KEY,JSON.stringify({url,key}));await connect(url,key);showToast('Connexion réussie : tu utilises maintenant le classement partagé.');}catch(e){console.error(e);setStatus(false,'Connexion échouée');showToast(e.message||'Impossible de se connecter.',true);$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie l’URL, la clé, les réglages Supabase et setup.sql');}finally{setBusy(false)}});
+      $('disconnectBtn').addEventListener('click',()=>{localStorage.removeItem(CONFIG_KEY);if(client){try{client.removeAllChannels()}catch{}}client=null;currentUser=null;creator=null;world=null;leaderboard=[];setStatus(false,'Serveur non configuré');$('settingsOverlay').classList.remove('show');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Configuration effacée. Le classement réel est masqué jusqu’à la reconnexion.';renderLeaderboard();renderFeed([]);updateStats();showToast('Configuration locale effacée.')});
+      $('quality').addEventListener('input',()=>$('qualityValue').textContent=$('quality').value+' / 5');$('promo').addEventListener('input',()=>$('promoValue').textContent=money($('promo').value));
+      $('nameForm').addEventListener('submit',async e=>{e.preventDefault();if(!client)return;const name=$('creatorName').value.trim();try{setBusy(true);const {data,error}=await client.rpc('create_creator',{p_name:name});if(error)throw error;creator=data; $('nameOverlay').classList.remove('show');await refreshAll();showToast(`Bienvenue ${creator.name} ! Ta chaîne est enregistrée en ligne.`)}catch(err){showToast(err.message||'Impossible de créer ce pseudo.',true)}finally{setBusy(false)}});
+      $('videoForm').addEventListener('submit',async e=>{e.preventDefault();if(!client||!creator){showToast('Connecte ton serveur et crée ta chaîne pour publier.',true);if(!client)showSettings();else $('nameOverlay').classList.add('show');return}try{setBusy(true);const args={p_title:$('videoTitle').value.trim(),p_topic:$('topic').value,p_format:$('format').value,p_quality:Number($('quality').value),p_promo:Number($('promo').value)};const {data,error}=await client.rpc('publish_video',args);if(error)throw error;$('videoTitle').value='';await refreshAll();const video=data?.video||data;showToast(`Vidéo publiée ! ${compact(video.views||0)} vues · +${compact(video.subscribers_gained||0)} abonnés · revenus ${money(video.revenue||0)}.`)}catch(err){showToast(err.message||'La publication a échoué.',true)}finally{setBusy(false)}});
+      $('badBuzzForm').addEventListener('submit',async e=>{e.preventDefault();if(!client||!creator){showToast('Connecte-toi et crée une chaîne avant cette action.',true);return}const target=$('target').value;if(!target){showToast('Choisis un autre joueur présent dans le classement.',true);return}try{setBusy(true);const {data,error}=await client.rpc('launch_badbuzz',{p_target_id:target,p_claim:$('claim').value});if(error)throw error;await refreshAll();showToast(data?.message||'Action de bad buzz enregistrée.')}catch(err){showToast(err.message||'Impossible de lancer ce bad buzz.',true)}finally{setBusy(false)}});
+      document.querySelectorAll('[data-scroll]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-scroll]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');$(btn.dataset.scroll).scrollIntoView({behavior:'smooth',block:'start'})}));
+      (async()=>{const cfg=loadConfig();if(cfg?.url&&cfg?.key){$('supabaseUrl').value=cfg.url;$('supabaseKey').value=cfg.key;try{await connect(cfg.url,cfg.key)}catch(e){console.warn(e);setStatus(false,'Connexion requise');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie les réglages Supabase');}}else{setStatus(false,'Serveur non configuré');renderLeaderboard();renderFeed([]);showSettings();}})();
+    })();
+  </script>
+</body>
+</html>
