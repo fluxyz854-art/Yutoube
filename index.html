@@ -131,7 +131,7 @@
       const DEFAULT_SUPABASE_URL = 'https://dwgxgyzrbsykqivklaox.supabase.co';
       const DEFAULT_SUPABASE_KEY = 'sb_publishable_jo6dr7QzjxpUPNKuZzG3UQ_AuRk-DRC';
       const $ = (id) => document.getElementById(id);
-      let client = null, currentUser = null, creator = null, world = null, leaderboard = [], refreshTimer = null, realtimeChannel = null, isBusy = false, videos = [];
+      let client = null, currentUser = null, creator = null, world = null, leaderboard = [], refreshTimer = null, realtimeChannel = null, isBusy = false, videos = [], isRefreshing = false, simulationWarning = '';
       const topicNames = {gaming:'Gaming', humour:'Humour', musique:'Musique', sport:'Sport', tech:'Tech', cuisine:'Cuisine', lifestyle:'Lifestyle'};
       const formatNames = {short:'Shorts', long:'vidéos longues', live:'Lives'};
       const claimNames = {copie:'Copie de contenu', pub:'Publicité cachée', ego:'Drama après une interview'};
@@ -161,18 +161,43 @@
       function renderVideos(rows){const root=$('videoList');root.replaceChildren();if(!rows||!rows.length){const d=document.createElement('div');d.className='empty';d.textContent='Tu n’as pas encore publié de vidéo. Publie ta première vidéo pour commencer à suivre ses statistiques.';root.append(d);return;}rows.forEach(v=>{const item=document.createElement('div');item.className='feed-item';const p=document.createElement('p');p.innerHTML='';const title=document.createElement('b');title.textContent='🎬 '+v.title;const stats=document.createElement('p');stats.style.marginTop='7px';stats.textContent=`${topicNames[v.topic]||v.topic} · ${formatNames[v.format]||v.format}\n👁️ ${compact(v.views)} vues · 👥 +${compact(v.subscribers_gained)} abonnés · 💶 ${money(v.revenue)} de revenus`;stats.style.whiteSpace='pre-line';const time=document.createElement('time');time.textContent='Publiée le '+formatTime(v.created_at);p.append(title);item.append(p,stats,time);root.append(item)})}
       async function loadVideos(){if(!client||!currentUser||!creator){videos=[];renderVideos([]);return;}const {data,error}=await client.from('videos').select('id,title,topic,format,views,subscribers_gained,revenue,created_at').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(50);if(error)throw error;videos=data||[];renderVideos(videos)}
       async function loadCreator(){if(!client||!currentUser)return;const {data,error}=await client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle();if(error)throw error;creator=data;updateStats();if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show')}
-      async function refreshAll(){if(!client)return;try{
-        if(currentUser){const {error:simError}=await client.rpc('advance_creator_simulation');if(simError)throw simError;}
-        const [worldRes,creatorRes,rankRes,eventRes,videosRes]=await Promise.all([
-          client.from('world_state').select('*').eq('id',1).single(),
-          currentUser?client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle():Promise.resolve({data:null,error:null}),
-          client.from('creators').select('user_id,name,subscribers,total_views,videos_count,reputation,cash,created_at').order('subscribers',{ascending:false}).order('total_views',{ascending:false}).limit(100),
-          client.from('game_events').select('id,event_type,message,created_at').order('created_at',{ascending:false}).limit(8),
-          currentUser?client.from('videos').select('id,title,topic,format,views,subscribers_gained,revenue,created_at').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(50):Promise.resolve({data:[],error:null})
-        ]);
-        if(worldRes.error)throw worldRes.error;if(creatorRes.error)throw creatorRes.error;if(rankRes.error)throw rankRes.error;if(eventRes.error)throw eventRes.error;if(videosRes.error)throw videosRes.error;
-        world=worldRes.data;creator=creatorRes.data;leaderboard=rankRes.data||[];videos=videosRes.data||[];updateWorld();renderLeaderboard();renderFeed(eventRes.data||[]);renderVideos(videos);$('offlineBanner').classList.add('hidden');setStatus(true,`En ligne · ${leaderboard.length} joueurs`);if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show');
-      }catch(err){console.error(err);setStatus(false,'Erreur de synchronisation');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='La connexion au serveur a échoué : '+(err.message||'vérifie ton projet et le fichier setup.sql');throw err;}}
+      async function refreshAll(){
+        if(!client || isRefreshing) return;
+        isRefreshing = true;
+        try {
+          // La simulation est indépendante du chargement de l'interface : si le RPC manque,
+          // le jeu reste consultable et affiche un diagnostic au lieu de bloquer tout le tableau.
+          if(currentUser){
+            const {error:simError}=await client.rpc('advance_creator_simulation');
+            simulationWarning = simError ? (simError.message || String(simError)) : '';
+            if(simError) console.error('Progression automatique indisponible:', simError);
+          }
+          const [worldRes,creatorRes,rankRes,eventRes,videosRes]=await Promise.all([
+            client.from('world_state').select('*').eq('id',1).single(),
+            currentUser?client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle():Promise.resolve({data:null,error:null}),
+            client.from('creators').select('user_id,name,subscribers,total_views,videos_count,reputation,cash,created_at').order('subscribers',{ascending:false}).order('total_views',{ascending:false}).limit(100),
+            client.from('game_events').select('id,event_type,message,created_at').order('created_at',{ascending:false}).limit(8),
+            currentUser?client.from('videos').select('id,title,topic,format,views,subscribers_gained,revenue,created_at').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(50):Promise.resolve({data:[],error:null})
+          ]);
+          if(worldRes.error)throw worldRes.error;
+          if(creatorRes.error)throw creatorRes.error;
+          if(rankRes.error)throw rankRes.error;
+          if(eventRes.error)throw eventRes.error;
+          if(videosRes.error)throw videosRes.error;
+          world=worldRes.data;creator=creatorRes.data;leaderboard=rankRes.data||[];videos=videosRes.data||[];
+          updateWorld();renderLeaderboard();renderFeed(eventRes.data||[]);renderVideos(videos);
+          setStatus(true,`En ligne · ${leaderboard.length} joueurs`);
+          if(simulationWarning){
+            $('offlineBanner').classList.remove('hidden');
+            $('offlineBanner').textContent='Le jeu est connecté, mais la progression automatique des vidéos est bloquée. Erreur Supabase : '+simulationWarning+'. Si le message mentionne advance_creator_simulation ou last_simulated_at, la mise à jour SQL de progression n’est pas disponible sur ce projet.';
+          } else {
+            $('offlineBanner').classList.add('hidden');
+          }
+          if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show');
+        } catch(err) {
+          console.error(err);setStatus(false,'Erreur de synchronisation');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='La connexion au serveur a échoué : '+(err.message||'vérifie le projet Supabase et les tables de base.');throw err;
+        } finally { isRefreshing = false; }
+      }
       async function connect(url,key){
         if(!window.supabase||!window.supabase.createClient)throw new Error('La bibliothèque Supabase ne s’est pas chargée. Vérifie ta connexion internet puis recharge la page.');
         if(!url.startsWith('https://')||!url.includes('.supabase.co'))throw new Error('URL Supabase invalide. Elle ressemble à https://xxxx.supabase.co');
