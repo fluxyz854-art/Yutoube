@@ -121,6 +121,9 @@
     (() => {
       'use strict';
       const CONFIG_KEY = 'creator-tycoon-supabase-config-v1';
+      // Configuration publique du serveur, intégrée pour tous les joueurs.
+      const DEFAULT_SUPABASE_URL = 'https://dwgxgyzrbsykqivklaox.supabase.co';
+      const DEFAULT_SUPABASE_KEY = 'sb_publishable_jo6dr7QzjxpUPNKuZzG3UQ_AuRk-DRC';
       const $ = (id) => document.getElementById(id);
       let client = null, currentUser = null, creator = null, world = null, leaderboard = [], refreshTimer = null, realtimeChannel = null, isBusy = false;
       const topicNames = {gaming:'Gaming', humour:'Humour', musique:'Musique', sport:'Sport', tech:'Tech', cuisine:'Cuisine', lifestyle:'Lifestyle'};
@@ -131,7 +134,7 @@
       function showToast(message, bad=false){const el=$('toast');el.textContent=message;el.style.borderColor=bad?'#a94d62':'#464a65';el.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove('show'),4500)}
       function setStatus(ok, text){$('connectionStatus').classList.toggle('online',!!ok);$('connectionText').textContent=text}
       function showSettings(){const saved=loadConfig();$('supabaseUrl').value=saved?.url||'';$('supabaseKey').value=saved?.key||'';$('settingsOverlay').classList.add('show')}
-      function loadConfig(){try{return JSON.parse(localStorage.getItem(CONFIG_KEY)||'null')}catch{return null}}
+      function loadConfig(){try{const saved=JSON.parse(localStorage.getItem(CONFIG_KEY)||'null');if(saved?.url&&saved?.key)return saved;}catch{}return {url:DEFAULT_SUPABASE_URL,key:DEFAULT_SUPABASE_KEY}}
       function setBusy(b){isBusy=b;$('publishBtn').disabled=b;$('badBuzzBtn').disabled=b;$('saveConnectBtn').disabled=b;$('publishBtn').textContent=b?'Traitement…':'🚀 Publier la vidéo';}
       function formatCash(n){return money(n)}
       function formatTime(s){const d=new Date(s);return Number.isNaN(d.getTime())?'à l’instant':d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
@@ -185,7 +188,7 @@
       $('videoForm').addEventListener('submit',async e=>{e.preventDefault();if(!client||!creator){showToast('Connecte ton serveur et crée ta chaîne pour publier.',true);if(!client)showSettings();else $('nameOverlay').classList.add('show');return}try{setBusy(true);const args={p_title:$('videoTitle').value.trim(),p_topic:$('topic').value,p_format:$('format').value,p_quality:Number($('quality').value),p_promo:Number($('promo').value)};const {data,error}=await client.rpc('publish_video',args);if(error)throw error;$('videoTitle').value='';await refreshAll();const video=data?.video||data;showToast(`Vidéo publiée ! ${compact(video.views||0)} vues · +${compact(video.subscribers_gained||0)} abonnés · revenus ${money(video.revenue||0)}.`)}catch(err){showToast(err.message||'La publication a échoué.',true)}finally{setBusy(false)}});
       $('badBuzzForm').addEventListener('submit',async e=>{e.preventDefault();if(!client||!creator){showToast('Connecte-toi et crée une chaîne avant cette action.',true);return}const target=$('target').value;if(!target){showToast('Choisis un autre joueur présent dans le classement.',true);return}try{setBusy(true);const {data,error}=await client.rpc('launch_badbuzz',{p_target_id:target,p_claim:$('claim').value});if(error)throw error;await refreshAll();showToast(data?.message||'Action de bad buzz enregistrée.')}catch(err){showToast(err.message||'Impossible de lancer ce bad buzz.',true)}finally{setBusy(false)}});
       document.querySelectorAll('[data-scroll]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-scroll]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');$(btn.dataset.scroll).scrollIntoView({behavior:'smooth',block:'start'})}));
-      (async()=>{const cfg=loadConfig();if(cfg?.url&&cfg?.key){$('supabaseUrl').value=cfg.url;$('supabaseKey').value=cfg.key;try{await connect(cfg.url,cfg.key)}catch(e){console.warn(e);setStatus(false,'Connexion requise');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie les réglages Supabase');}}else{setStatus(false,'Serveur non configuré');renderLeaderboard();renderFeed([]);showSettings();}})();
+      (async()=>{const cfg=loadConfig();if(cfg?.url&&cfg?.key){$('supabaseUrl').value=cfg.url;$('supabaseKey').value=cfg.key;try{await connect(cfg.url,cfg.key)}catch(e){console.warn(e);setStatus(false,'Connexion requise');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie les réglages Supabase');}}else{setStatus(false,'Connexion en cours…');renderLeaderboard();renderFeed([]);try{localStorage.setItem(CONFIG_KEY,JSON.stringify({url:DEFAULT_SUPABASE_URL,key:DEFAULT_SUPABASE_KEY}));await connect(DEFAULT_SUPABASE_URL,DEFAULT_SUPABASE_KEY)}catch(e){console.warn(e);setStatus(false,'Connexion requise');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie les réglages Supabase');}}})();
     })();
   </script>
 </body>
