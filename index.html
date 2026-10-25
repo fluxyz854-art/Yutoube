@@ -581,6 +581,59 @@
       };
     }
 
+
+    // Ancien format du HTML de Jimmy : certains profils étaient enregistrés uniquement
+    // dans localStorage, avec des identifiants du type creator-1730000000000.
+    // On ne touche jamais à cette sauvegarde avant que l'import serveur ait réussi.
+    function isUuid(value) {
+      return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    }
+
+    function readLegacyLocalProfile() {
+      try {
+        const rawCreator = localStorage.getItem('yt_tycoon_local_creator');
+        if (!rawCreator) return null;
+        const legacy = JSON.parse(rawCreator);
+        if (!legacy || typeof legacy !== 'object') return null;
+        const legacyId = String(legacy.id || localStorage.getItem('yt_tycoon_creator_id') || '');
+        if (!/^creator-[0-9]{8,20}$/.test(legacyId)) return null;
+        const rawVideos = JSON.parse(localStorage.getItem('yt_tycoon_local_videos') || '[]');
+        const candidateName = String(legacy.channel_name || legacy.name || localStorage.getItem('yt_tycoon_local_name') || 'Mon Studio').trim();
+        const safeName = candidateName.length >= 3 ? candidateName.slice(0, 20) : 'Mon Studio';
+        return {
+          id: legacyId,
+          name: safeName,
+          subscribers: Math.max(0, Math.floor(Number(legacy.subscribers) || 100)),
+          cash: Math.max(0, Math.floor(Number(legacy.cash) || 0)),
+          videos: Array.isArray(rawVideos) ? rawVideos.slice(0, 250) : []
+        };
+      } catch (err) {
+        console.warn('Ancienne sauvegarde locale illisible :', err);
+        return null;
+      }
+    }
+
+    async function importLegacyLocalProfile(legacy) {
+      const { data, error } = await supabaseClient.rpc('recover_legacy_local_creator', {
+        p_legacy_id: legacy.id,
+        p_name: legacy.name,
+        p_subscribers: legacy.subscribers,
+        p_cash: legacy.cash,
+        p_videos: legacy.videos
+      });
+      if (error) {
+        if (error.code === 'PGRST202' || /recover_legacy_local_creator/i.test(error.message || '')) {
+          throw new Error('Ton ancien profil local a été retrouvé, mais la migration de récupération n’est pas encore installée dans Supabase. Exécute le fichier migration-recuperation-profils-jimmy.sql une seule fois, puis recharge cette page. Ta sauvegarde locale est conservée.');
+        }
+        throw new Error('Profil local retrouvé, mais import impossible : ' + (error.message || 'erreur Supabase') + '. La sauvegarde locale n’a pas été supprimée.');
+      }
+      if (!data || !data.creator) throw new Error('Supabase n’a pas renvoyé le profil récupéré. Ta sauvegarde locale est conservée.');
+      localStorage.setItem('yt_tycoon_creator_id', String(currentUser.id));
+      localStorage.setItem('yt_tycoon_legacy_migrated_' + currentUser.id, legacy.id);
+      currentCreator = normalizeCreator(data.creator);
+      showToast(`Ancien profil récupéré : ${currentCreator.channel_name} · ${Number(data.videos_imported || 0)} vidéo(s) restaurée(s).`, 'success');
+    }
+
     window.addEventListener('DOMContentLoaded', initializeApp);
 
     async function initializeApp() {
@@ -598,12 +651,33 @@
 
         const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
         if (sessionError) throw sessionError;
+        const storedProfileId = localStorage.getItem('yt_tycoon_creator_id') || '';
+        const legacyLocalBeforeAuth = readLegacyLocalProfile();
         if (sessionData.session) {
           currentUser = sessionData.session.user;
+          // Un ancien UUID indique un profil lié à une identité Supabase. Si la session
+          // a changé, on s'arrête plutôt que de créer silencieusement un profil vierge.
+          if (isUuid(storedProfileId) && storedProfileId !== currentUser.id) {
+            updateStatusPill(false, 'Identité à récupérer');
+            updateDiagnostic('Le navigateur possède un ancien identifiant de profil, mais la session Supabase est différente. Aucune nouvelle chaîne ne sera créée automatiquement.');
+            showToast('La session Supabase ne correspond pas à ton ancien profil. Ne crée pas une nouvelle chaîne : il faut restaurer l’identité précédente.', 'error');
+            return;
+          }
         } else {
+          // Si la sauvegarde pointe vers un profil serveur (UUID) mais que le jeton
+          // d’authentification a disparu, ne pas fabriquer un nouvel utilisateur anonyme.
+          if (isUuid(storedProfileId)) {
+            updateStatusPill(false, 'Session à récupérer');
+            updateDiagnostic('Ancien profil serveur détecté, mais la session d’authentification correspondante n’est plus présente dans ce navigateur. Aucune nouvelle identité créée.');
+            showToast('Ta sauvegarde indique un ancien profil serveur, mais son jeton de session manque. Ne crée pas de nouveau compte ; la récupération doit viser cet ancien profil.', 'error');
+            return;
+          }
           const { data, error } = await supabaseClient.auth.signInAnonymously();
           if (error) throw new Error('Connexion anonyme impossible. Vérifie que les connexions anonymes sont activées dans Supabase. ' + error.message);
           currentUser = data.user;
+          // Si l’ancien profil était local, on garde la même sauvegarde et on la migrera
+          // dans le compte anonyme actuel via la fonction SQL de récupération.
+          if (legacyLocalBeforeAuth) console.info('Ancienne sauvegarde locale détectée ; import possible après connexion.');
         }
 
         document.getElementById('cfg-creator-id').value = currentUser.id;
@@ -656,13 +730,33 @@
         document.getElementById('cfg-creator-id').value = currentUser.id;
 
         if (!currentCreator) {
-          creatorVideos = [];
-          document.getElementById('modal-create-channel').classList.remove('hidden');
-          updateStatusPill(true, 'Serveur connecté');
-          updateDiagnostic('Connecté · crée ta chaîne pour commencer');
-          await fetchWorldState();
-          await refreshLeaderboard();
-          return;
+          const storedProfileId = localStorage.getItem('yt_tycoon_creator_id') || '';
+          if (isUuid(storedProfileId)) {
+            // Le profil était censé être serveur. Ne pas le remplacer par un profil local/vierge.
+            throw new Error('Aucun profil trouvé pour cette identité Supabase, alors que le navigateur conserve un identifiant de profil serveur. Aucune chaîne n’a été recréée pour éviter d’écraser ou de dupliquer les données.');
+          }
+          const legacy = readLegacyLocalProfile();
+          if (legacy) {
+            updateStatusPill(true, 'Récupération du profil…');
+            updateDiagnostic('Ancienne sauvegarde Jimmy retrouvée ; vérification du profil serveur…');
+            // Si le même nom existe déjà sur le serveur, il peut s'agir du profil de base
+            // lié à une ancienne identité anonyme perdue. Ne pas créer un doublon local/online.
+            const { data: nameMatch, error: nameMatchError } = await supabaseClient
+              .from('creators').select('user_id,name').ilike('name', legacy.name).maybeSingle();
+            if (nameMatchError) throw nameMatchError;
+            if (nameMatch && nameMatch.user_id !== currentUser.id) {
+              throw new Error(`Un profil serveur nommé « ${nameMatch.name} » existe déjà, mais il est lié à une autre identité Supabase. Je n’ai rien remplacé et ta sauvegarde locale est conservée. Il faut récupérer/transférer ce profil existant plutôt que créer un doublon.`);
+            }
+            await importLegacyLocalProfile(legacy);
+          } else {
+            creatorVideos = [];
+            document.getElementById('modal-create-channel').classList.remove('hidden');
+            updateStatusPill(true, 'Serveur connecté');
+            updateDiagnostic('Connecté · aucun profil serveur ni ancienne sauvegarde locale trouvés');
+            await fetchWorldState();
+            await refreshLeaderboard();
+            return;
+          }
         }
 
         document.getElementById('modal-create-channel').classList.add('hidden');
