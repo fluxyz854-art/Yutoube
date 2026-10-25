@@ -566,7 +566,7 @@
 
     const TOPIC_LABELS = {
       gaming: 'Gaming', tech: 'Tech', lifestyle: 'Vlog & Lifestyle',
-      humour: 'Humour', musique: 'Musique', sport: 'Sport', cuisine: 'Cuisine'
+      humour: 'Humour & Réactions', musique: 'Musique & Culture', sport: 'Sport', cuisine: 'Cuisine'
     };
     const FORMAT_LABELS = { short: 'Short', long: 'Vidéo longue', live: 'Live' };
 
@@ -703,8 +703,10 @@
         }
       } catch (err) {
         console.error('Chargement des données :', err);
+        const detail = [err?.code, err?.message, err?.details, err?.hint].filter(Boolean).join(' — ') || 'Erreur inconnue lors du chargement Supabase';
         updateStatusPill(false, 'Erreur de synchronisation');
-        updateDiagnostic(err.message || 'Erreur lors du chargement Supabase');
+        updateDiagnostic('Erreur Supabase : ' + detail);
+        showToast('Synchronisation impossible : ' + detail, 'error');
       } finally {
         refreshInProgress = false;
       }
@@ -824,7 +826,7 @@
         return;
       }
       const targetId = document.getElementById('badbuzz-target').value;
-      const claim = document.getElementById('badbuzz-claim').value;
+      const claim = document.getElementById('badbuzz-claim')?.value || 'copie';
       if (!targetId) {
         showToast('Veuillez sélectionner un créateur cible.', 'error');
         return;
