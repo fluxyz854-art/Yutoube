@@ -317,11 +317,13 @@
               <div class="space-y-1">
                 <label class="block text-xs font-bold uppercase tracking-wider text-yt-muted">Thématique / Sujet</label>
                 <select id="video-topic" class="w-full px-4 py-3 bg-gray-50 border border-yt-border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-yt-red text-sm transition">
-                  <option value="Gaming">🎮 Gaming & Esports</option>
-                  <option value="Tech">💻 Tech & Innovation</option>
-                  <option value="Vlog">🤳 Vlog & Lifestyle</option>
-                  <option value="Drama">🧨 Drama & Reactions</option>
-                  <option value="Humour">😂 Humour & Entertainment</option>
+                  <option value="gaming">🎮 Gaming & Esports</option>
+                  <option value="tech">💻 Tech & Innovation</option>
+                  <option value="lifestyle">🤳 Vlog & Lifestyle</option>
+                  <option value="humour">😂 Humour & Entertainment</option>
+                  <option value="musique">🎵 Musique</option>
+                  <option value="sport">🏆 Sport</option>
+                  <option value="cuisine">🍳 Cuisine</option>
                 </select>
               </div>
 
@@ -329,9 +331,9 @@
               <div class="space-y-1">
                 <label class="block text-xs font-bold uppercase tracking-wider text-yt-muted">Format</label>
                 <select id="video-format" class="w-full px-4 py-3 bg-gray-50 border border-yt-border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-yt-red text-sm transition">
-                  <option value="Short">⚡ YouTube Short (Rapide & Viral)</option>
-                  <option value="Standard" selected>🎥 Vidéo Standard 1080p</option>
-                  <option value="Documentaire">🎬 Grand Documentaire / Concept 4K</option>
+                  <option value="short">⚡ YouTube Short (Rapide & Viral)</option>
+                  <option value="long" selected>🎥 Vidéo longue 1080p</option>
+                  <option value="live">🔴 Live en direct</option>
                 </select>
               </div>
             </div>
@@ -358,11 +360,11 @@
                   <span class="font-bold text-yt-muted uppercase">Budget Promotion (Ads)</span>
                   <span id="promo-val-display" class="font-bold text-emerald-600">0 €</span>
                 </div>
-                <input type="range" id="video-promo" min="0" max="1000" value="0" step="50" oninput="updateStudioCalculations()"
+                <input type="range" id="video-promo" min="0" max="500" value="0" step="50" oninput="updateStudioCalculations()"
                   class="w-full accent-emerald-600 cursor-pointer">
                 <div class="flex justify-between text-[10px] text-yt-muted">
                   <span>0 €</span>
-                  <span>1 000 €</span>
+                  <span>500 €</span>
                 </div>
               </div>
             </div>
@@ -461,11 +463,21 @@
               </select>
             </div>
 
-            <div class="flex items-center justify-between border-t border-purple-200 pt-4">
-              <span class="text-xs font-medium text-purple-900">Coût d'attaque Drama: <strong class="text-purple-700 font-bold">150,00 €</strong></span>
-              <button type="submit" id="btn-badbuzz" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2.5 rounded-full shadow transition flex items-center gap-2">
-                <i class="fa-solid fa-bolt"></i> Lancer le Clash
-              </button>
+            <div class="space-y-3 border-t border-purple-200 pt-4">
+              <div class="space-y-1">
+                <label for="badbuzz-claim" class="block text-xs font-bold uppercase tracking-wider text-purple-900">Motif de la polémique</label>
+                <select id="badbuzz-claim" class="w-full px-4 py-3 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 text-sm">
+                  <option value="copie">Copie de contenu</option>
+                  <option value="pub">Publicité cachée</option>
+                  <option value="ego">Drama après une interview</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-medium text-purple-900">Délai entre deux attaques : <strong class="text-purple-700 font-bold">10 minutes</strong></span>
+                <button type="submit" id="btn-badbuzz" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2.5 rounded-full shadow transition flex items-center gap-2">
+                  <i class="fa-solid fa-bolt"></i> Lancer le Clash
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -534,344 +546,377 @@
 
   <!-- JAVASCRIPT GAME LOGIC & SUPABASE INTEGRATION -->
   <script>
-    // ----------------------------------------------------
-    // REALTIME SUBSCRIPTIONS & POLLING FALLBACK
-    // ----------------------------------------------------
-    function setupRealtimeSubscriptions() {
-      if (!supabaseClient) return;
+    // Creator Tycoon — intégration compatible avec le SQL Supabase déjà installé.
+    // L'interface de Jimmy est conservée ; seules les connexions/données ont été adaptées.
+    const SUPABASE_URL = 'https://dwgxgyzrbsykqivklaox.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_jo6dr7QzjxpUPNKuZzG3UQ_AuRk-DRC';
 
-      // Try setting up Realtime subscriptions, but gracefully catch WebSocket restrictions in Canvas
-      try {
-        supabaseClient
-          .channel('public:creators')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'creators' }, (payload) => {
-            if (currentCreator && payload.new && payload.new.id === currentCreator.id) {
-              currentCreator = payload.new;
-              updateUI();
-            }
-            refreshLeaderboard();
-          })
-          .subscribe((status, err) => {
-            if (status === 'CHANNEL_ERROR' || err) {
-              console.warn("Realtime channel error, using polling instead:", err);
-            }
-          });
+    let supabaseClient = null;
+    let currentUser = null;
+    let currentCreator = null;
+    let creatorVideos = [];
+    let leaderboardData = [];
+    let worldState = { trend_topic: 'gaming', trending_topic: 'gaming', hot_format: 'short', market_mood: 1, week_num: 1 };
+    let activeTab = 'dashboard';
+    let passiveRpcAvailable = null;
+    let refreshInProgress = false;
+    let refreshTimer = null;
+    let creatorsChannel = null;
+    let worldChannel = null;
 
-        supabaseClient
-          .channel('public:world_state')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'world_state' }, (payload) => {
-            if (payload.new) {
-              worldState = payload.new;
-              renderMarketTrends();
-            }
-          })
-          .subscribe();
-      } catch (err) {
-        console.warn("WebSocket not supported or allowed in this environment. Falling back to polling.", err);
-      }
+    const TOPIC_LABELS = {
+      gaming: 'Gaming', tech: 'Tech', lifestyle: 'Vlog & Lifestyle',
+      humour: 'Humour', musique: 'Musique', sport: 'Sport', cuisine: 'Cuisine'
+    };
+    const FORMAT_LABELS = { short: 'Short', long: 'Vidéo longue', live: 'Live' };
 
-      // Start periodic polling as a reliable fallback for preview / canvas environments
-      setInterval(async () => {
-        if (currentCreator) {
-          await loadCreatorData(currentCreator.id);
-        }
-      }, 10000); // Refresh every 10 seconds
+    function normalizeCreator(row) {
+      if (!row) return null;
+      return {
+        ...row,
+        id: row.user_id,
+        channel_name: row.name,
+        // Le schéma actuel ne stocke pas de niveau : on le calcule uniquement pour l'affichage.
+        level: Math.max(1, Math.floor(Number(row.subscribers || 0) / 1000) + 1)
+      };
     }
 
-    // ----------------------------------------------------
-    // VIDEO PUBLISHING (STUDIO)
-    // ----------------------------------------------------
+    window.addEventListener('DOMContentLoaded', initializeApp);
+
+    async function initializeApp() {
+      document.getElementById('cfg-url').value = SUPABASE_URL;
+      document.getElementById('cfg-key').value = SUPABASE_ANON_KEY;
+      updateStatusPill(false, 'Connexion au serveur…');
+      updateDiagnostic('Connexion à Supabase…');
+      try {
+        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+          throw new Error('La bibliothèque Supabase ne s’est pas chargée. Vérifie ta connexion puis recharge la page.');
+        }
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+        });
+
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (sessionData.session) {
+          currentUser = sessionData.session.user;
+        } else {
+          const { data, error } = await supabaseClient.auth.signInAnonymously();
+          if (error) throw new Error('Connexion anonyme impossible. Vérifie que les connexions anonymes sont activées dans Supabase. ' + error.message);
+          currentUser = data.user;
+        }
+
+        document.getElementById('cfg-creator-id').value = currentUser.id;
+        updateStatusPill(true, 'Serveur connecté');
+        await loadCreatorData();
+        setupRealtimeSubscriptions();
+        clearInterval(refreshTimer);
+        refreshTimer = setInterval(() => { loadCreatorData(); }, 20000);
+      } catch (err) {
+        console.error('Initialisation Supabase :', err);
+        updateStatusPill(false, 'Connexion impossible');
+        updateDiagnostic(err.message || 'Erreur de connexion Supabase');
+        showToast(err.message || 'Connexion au serveur impossible.', 'error');
+      }
+    }
+
+    async function handleCreateCreator(event) {
+      event.preventDefault();
+      if (!supabaseClient || !currentUser) {
+        showToast('Le serveur n’est pas connecté. Recharge la page puis réessaie.', 'error');
+        return;
+      }
+      const name = document.getElementById('init-channel-name').value.trim();
+      if (name.length < 3 || name.length > 20) {
+        showToast('Le nom de chaîne doit contenir entre 3 et 20 caractères.', 'error');
+        return;
+      }
+      try {
+        const { data, error } = await supabaseClient.rpc('create_creator', { p_name: name });
+        if (error) throw error;
+        currentCreator = normalizeCreator(data);
+        document.getElementById('modal-create-channel').classList.add('hidden');
+        showToast('Chaîne créée sur le serveur ! 🎉', 'success');
+        await loadCreatorData();
+      } catch (err) {
+        console.error('Création de chaîne :', err);
+        showToast(err.message || 'Impossible de créer la chaîne.', 'error');
+      }
+    }
+
+    async function loadCreatorData() {
+      if (!supabaseClient || !currentUser || refreshInProgress) return;
+      refreshInProgress = true;
+      try {
+        // Toujours récupérer d'abord le créateur depuis la session Supabase persistante.
+        const { data: creatorRow, error: creatorError } = await supabaseClient
+          .from('creators').select('*').eq('user_id', currentUser.id).maybeSingle();
+        if (creatorError) throw creatorError;
+        currentCreator = normalizeCreator(creatorRow);
+        document.getElementById('cfg-creator-id').value = currentUser.id;
+
+        if (!currentCreator) {
+          creatorVideos = [];
+          document.getElementById('modal-create-channel').classList.remove('hidden');
+          updateStatusPill(true, 'Serveur connecté');
+          updateDiagnostic('Connecté · crée ta chaîne pour commencer');
+          await fetchWorldState();
+          await refreshLeaderboard();
+          return;
+        }
+
+        document.getElementById('modal-create-channel').classList.add('hidden');
+        localStorage.setItem('yt_tycoon_creator_id', currentUser.id);
+
+        // Progression passive côté SQL : pas de simulation locale des scores officiels.
+        let passiveSummary = null;
+        let passiveWarning = '';
+        if (passiveRpcAvailable !== false) {
+          const { data, error } = await supabaseClient.rpc('advance_creator_simulation');
+          if (error) {
+            passiveRpcAvailable = false;
+            passiveWarning = 'Progression passive SQL à vérifier : ' + (error.message || 'fonction indisponible');
+            console.warn(passiveWarning);
+          } else {
+            passiveRpcAvailable = true;
+            passiveSummary = data;
+          }
+        }
+
+        // Relire le créateur après le RPC car argent/abonnés/vues peuvent avoir évolué.
+        const { data: refreshedCreator, error: refreshedCreatorError } = await supabaseClient
+          .from('creators').select('*').eq('user_id', currentUser.id).maybeSingle();
+        if (refreshedCreatorError) throw refreshedCreatorError;
+        currentCreator = normalizeCreator(refreshedCreator);
+
+        await Promise.all([fetchCreatorVideos(), fetchWorldState(), refreshLeaderboard()]);
+        updateUI();
+        updateStatusPill(true, 'Serveur connecté');
+        if (passiveWarning) {
+          updateDiagnostic(passiveWarning);
+        } else if (passiveSummary) {
+          updateDiagnostic(`Connecté · progression : +${formatNumber(passiveSummary.views_gained || 0)} vues, +${formatNumber(passiveSummary.subscribers_gained || 0)} abonnés, +${formatCurrency(passiveSummary.revenue || 0)}`);
+        } else if (passiveRpcAvailable === false) {
+          updateDiagnostic('Connecté · progression passive SQL à vérifier');
+        } else {
+          updateDiagnostic('Connecté au serveur SQL');
+        }
+      } catch (err) {
+        console.error('Chargement des données :', err);
+        updateStatusPill(false, 'Erreur de synchronisation');
+        updateDiagnostic(err.message || 'Erreur lors du chargement Supabase');
+      } finally {
+        refreshInProgress = false;
+      }
+    }
+
+    async function fetchCreatorVideos() {
+      if (!supabaseClient || !currentUser) return;
+      const { data, error } = await supabaseClient
+        .from('videos').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
+      if (error) throw error;
+      creatorVideos = data || [];
+    }
+
+    async function fetchWorldState() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient.from('world_state').select('*').eq('id', 1).single();
+      if (error) throw error;
+      worldState = { ...data, trending_topic: data.trend_topic || 'gaming' };
+      renderMarketTrends();
+    }
+
+    async function refreshLeaderboard() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from('creators')
+        .select('user_id,name,subscribers,cash,total_views,reputation,created_at')
+        .order('subscribers', { ascending: false })
+        .order('total_views', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      leaderboardData = (data || []).map(normalizeCreator);
+      renderLeaderboard();
+      updateBadBuzzTargets();
+    }
+
+    function setupRealtimeSubscriptions() {
+      if (!supabaseClient) return;
+      try {
+        if (creatorsChannel) supabaseClient.removeChannel(creatorsChannel);
+        creatorsChannel = supabaseClient
+          .channel('creator-tycoon-creators')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'creators' }, () => loadCreatorData())
+          .subscribe();
+        if (worldChannel) supabaseClient.removeChannel(worldChannel);
+        worldChannel = supabaseClient
+          .channel('creator-tycoon-world')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'world_state' }, () => fetchWorldState().catch(console.warn))
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime indisponible ; actualisation périodique conservée.', err);
+      }
+    }
+
     function updateStudioCalculations() {
-      const qualityLevel = parseInt(document.getElementById('video-quality').value) || 1;
-      const promoBudget = parseFloat(document.getElementById('video-promo').value) || 0;
-
-      const qualityCosts = [0, 0, 50, 150, 300, 500];
-      const qualityCost = qualityCosts[qualityLevel] || 0;
+      const qualityLevel = parseInt(document.getElementById('video-quality').value, 10) || 1;
+      const promoBudget = Math.min(500, parseInt(document.getElementById('video-promo').value, 10) || 0);
+      const qualityCost = qualityLevel * 45; // Même règle que publish_video côté SQL.
       const totalCost = qualityCost + promoBudget;
-
       document.getElementById('quality-val-display').textContent = `Niveau ${qualityLevel}`;
       document.getElementById('promo-val-display').textContent = formatCurrency(promoBudget);
       document.getElementById('total-production-cost').textContent = formatCurrency(totalCost);
-
-      if (currentCreator) {
-        document.getElementById('studio-current-cash').textContent = formatCurrency(currentCreator.cash);
-      }
+      if (currentCreator) document.getElementById('studio-current-cash').textContent = formatCurrency(currentCreator.cash);
     }
 
-    async function handlePublishVideo(e) {
-      e.preventDefault();
-      if (!currentCreator) return;
-
+    async function handlePublishVideo(event) {
+      event.preventDefault();
+      if (!supabaseClient || !currentUser || !currentCreator) {
+        showToast('Connecte-toi et crée ta chaîne avant de publier.', 'error');
+        return;
+      }
       const title = document.getElementById('video-title').value.trim();
       const topic = document.getElementById('video-topic').value;
       const format = document.getElementById('video-format').value;
-      const quality = parseInt(document.getElementById('video-quality').value) || 1;
-      const promoBudget = parseFloat(document.getElementById('video-promo').value) || 0;
-
-      const qualityCosts = [0, 0, 50, 150, 300, 500];
-      const totalCost = (qualityCosts[quality] || 0) + promoBudget;
-
-      if (currentCreator.cash < totalCost) {
-        showToast('Fonds insuffisants pour produire cette vidéo !', 'error');
+      const quality = parseInt(document.getElementById('video-quality').value, 10) || 1;
+      const promoBudget = Math.min(500, parseInt(document.getElementById('video-promo').value, 10) || 0);
+      const totalCost = quality * 45 + promoBudget;
+      if (title.length < 3 || title.length > 60) {
+        showToast('Le titre doit contenir entre 3 et 60 caractères.', 'error');
+        return;
+      }
+      if (Number(currentCreator.cash) < totalCost) {
+        showToast(`Fonds insuffisants : il faut ${formatCurrency(totalCost)}.`, 'error');
         return;
       }
 
       const publishBtn = document.getElementById('btn-publish');
       publishBtn.disabled = true;
-      publishBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Publication...`;
-
+      publishBtn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin"></i> Publication…';
       try {
         const { data, error } = await supabaseClient.rpc('publish_video', {
-          p_creator_id: currentCreator.id,
           p_title: title,
           p_topic: topic,
           p_format: format,
           p_quality: quality,
-          p_promo_budget: promoBudget
+          p_promo: promoBudget
         });
-
         if (error) throw error;
-
-        showToast('Vidéo mise en ligne avec succès ! 🚀', 'success');
         document.getElementById('form-create-video').reset();
         updateStudioCalculations();
-
-        // Refresh Data
-        await loadCreatorData(currentCreator.id);
+        await loadCreatorData();
         switchTab('videos');
-
+        const video = data && data.video ? data.video : null;
+        showToast(video ? `Vidéo publiée : ${formatNumber(video.views)} vues, +${formatNumber(video.subscribers_gained)} abonnés.` : 'Vidéo publiée sur le serveur ! 🚀', 'success');
       } catch (err) {
-        console.error("Publish Video Error:", err);
-        showToast(err.message || 'Erreur lors de la publication', 'error');
+        console.error('Publication :', err);
+        showToast(err.message || 'La publication a échoué.', 'error');
       } finally {
         publishBtn.disabled = false;
-        publishBtn.innerHTML = `<i class="fa-solid fa-upload"></i><span>Mettre en Ligne</span>`;
+        publishBtn.innerHTML = '<i class="fa-solid fa-upload"></i><span>Mettre en Ligne</span>';
       }
     }
 
-    // ----------------------------------------------------
-    // BAD BUZZ & DRAMAS
-    // ----------------------------------------------------
-    async function handleLaunchBadBuzz(e) {
-      e.preventDefault();
-      if (!currentCreator) return;
-
+    async function handleLaunchBadBuzz(event) {
+      event.preventDefault();
+      if (!supabaseClient || !currentCreator) {
+        showToast('Connecte-toi et crée ta chaîne avant cette action.', 'error');
+        return;
+      }
       const targetId = document.getElementById('badbuzz-target').value;
+      const claim = document.getElementById('badbuzz-claim').value;
       if (!targetId) {
-        showToast('Veuillez sélectionner un créateur cible', 'error');
+        showToast('Veuillez sélectionner un créateur cible.', 'error');
         return;
       }
-
-      if (currentCreator.cash < 150) {
-        showToast('Il vous faut au moins 150,00 € pour financer une campagne Drama', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('btn-badbuzz');
-      btn.disabled = true;
-
+      const button = document.getElementById('btn-badbuzz');
+      button.disabled = true;
       try {
         const { data, error } = await supabaseClient.rpc('launch_badbuzz', {
-          p_attacker_id: currentCreator.id,
-          p_target_id: targetId
+          p_target_id: targetId,
+          p_claim: claim
         });
-
         if (error) throw error;
-
-        showToast('Clash lancé ! Regardez le classement évoluer 🔥', 'success');
-        await loadCreatorData(currentCreator.id);
-
+        await loadCreatorData();
+        await refreshLeaderboard();
+        showToast(data?.message || 'Action enregistrée.', 'success');
       } catch (err) {
-        console.error("BadBuzz Error:", err);
-        showToast(err.message || 'Erreur lors du lancement du Bad Buzz', 'error');
+        console.error('Bad buzz :', err);
+        showToast(err.message || 'Erreur lors du lancement du bad buzz.', 'error');
       } finally {
-        btn.disabled = false;
+        button.disabled = false;
       }
     }
 
-    // ----------------------------------------------------
-    // FETCH DATA & UI REFRESH
-    // ----------------------------------------------------
-    async function fetchCreatorVideos(creatorId) {
-      try {
-        const { data, error } = await supabaseClient
-          .from('videos')
-          .select('*')
-          .eq('creator_id', creatorId)
-          .order('created_at', { ascending: false });
-
-        if (!error && data) {
-          creatorVideos = data;
-        }
-      } catch (err) {
-        console.error("Error fetching videos:", err);
-      }
-    }
-
-    async function refreshLeaderboard() {
-      try {
-        const { data, error } = await supabaseClient
-          .from('creators')
-          .select('id, channel_name, subscribers, cash')
-          .order('subscribers', { ascending: false })
-          .limit(20);
-
-        if (!error && data) {
-          leaderboardData = data;
-          renderLeaderboard();
-          updateBadBuzzTargets();
-        }
-      } catch (err) {
-        console.error("Leaderboard error:", err);
-      }
-    }
-
-    // ----------------------------------------------------
-    // UI RENDERING FUNCTIONS
-    // ----------------------------------------------------
     function updateUI() {
       if (!currentCreator) return;
-
-      // Header UI
-      document.getElementById('creator-name-header').textContent = currentCreator.channel_name || 'Mon Studio';
-      document.getElementById('creator-avatar').textContent = (currentCreator.channel_name || 'Y')[0].toUpperCase();
+      const name = currentCreator.channel_name || 'Mon Studio';
+      document.getElementById('creator-name-header').textContent = name;
+      document.getElementById('creator-avatar').textContent = name.charAt(0).toUpperCase();
       document.getElementById('top-subscribers').textContent = formatNumber(currentCreator.subscribers);
       document.getElementById('top-cash').textContent = formatCurrency(currentCreator.cash);
-
-      // Dashboard View UI
-      document.getElementById('dash-channel-title').textContent = currentCreator.channel_name;
+      document.getElementById('dash-channel-title').textContent = name;
       document.getElementById('dash-level-badge').textContent = `Niveau ${currentCreator.level || 1}`;
       document.getElementById('kpi-subscribers').textContent = formatNumber(currentCreator.subscribers);
       document.getElementById('kpi-cash').textContent = formatCurrency(currentCreator.cash);
-
-      // Total views calculation
-      const totalViews = creatorVideos.reduce((sum, v) => sum + (v.views || 0), 0);
-      document.getElementById('kpi-views').textContent = formatNumber(totalViews);
-
-      // Calculate Rank
-      if (leaderboardData.length > 0) {
-        const myRank = leaderboardData.findIndex(c => c.id === currentCreator.id) + 1;
-        document.getElementById('kpi-rank').textContent = myRank > 0 ? `#${myRank}` : '#-';
-      }
-
-      // Render Video Grid & Activity
+      const videoTotal = creatorVideos.reduce((sum, video) => sum + Number(video.views || 0), 0);
+      document.getElementById('kpi-views').textContent = formatNumber(currentCreator.total_views ?? videoTotal);
+      const index = leaderboardData.findIndex(item => item.id === currentCreator.id);
+      document.getElementById('kpi-rank').textContent = index >= 0 ? `#${index + 1}` : '#-';
+      document.getElementById('studio-current-cash').textContent = formatCurrency(currentCreator.cash);
       renderVideosGrid();
       renderActivityLog();
       renderMarketTrends();
+      updateStudioCalculations();
     }
 
     function renderVideosGrid() {
       const container = document.getElementById('videos-grid');
       if (!creatorVideos || creatorVideos.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full py-12 text-center text-yt-muted bg-white rounded-2xl border border-yt-border space-y-3">
-            <i class="fa-solid fa-film text-4xl text-gray-300"></i>
-            <p class="text-sm">Vous n'avez pas encore publié de vidéo.</p>
-            <button onclick="switchTab('studio')" class="px-4 py-2 bg-yt-red text-white font-medium text-xs rounded-full shadow hover:bg-yt-darkred transition">
-              Publier ma première vidéo
-            </button>
-          </div>
-        `;
+        container.innerHTML = `<div class="col-span-full py-12 text-center text-yt-muted bg-white rounded-2xl border border-yt-border space-y-3"><i class="fa-solid fa-film text-4xl text-gray-300"></i><p class="text-sm">Vous n'avez pas encore publié de vidéo.</p><button onclick="switchTab('studio')" class="px-4 py-2 bg-yt-red text-white font-medium text-xs rounded-full shadow hover:bg-yt-darkred transition">Publier ma première vidéo</button></div>`;
         return;
       }
-
       container.innerHTML = creatorVideos.map(video => {
-        const formatBadgeColor = video.format === 'Short' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
-        return `
-          <div class="bg-white rounded-2xl border border-yt-border overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
-            <!-- Simulated Video Thumbnail -->
-            <div class="video-thumbnail bg-gradient-to-br from-gray-800 to-gray-900 relative flex items-center justify-center p-4 text-white">
-              <span class="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${formatBadgeColor}">
-                ${video.format || 'Standard'}
-              </span>
-              <span class="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-[10px] rounded font-mono">
-                ${video.topic || 'Général'}
-              </span>
-              <div class="text-center space-y-1">
-                <i class="fa-solid fa-play text-2xl text-yt-red opacity-80"></i>
-                <h4 class="font-bold text-xs line-clamp-2 px-2">${escapeHtml(video.title)}</h4>
-              </div>
-            </div>
-
-            <!-- Content Details -->
-            <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
-              <div>
-                <h3 class="font-bold text-sm text-yt-text line-clamp-1">${escapeHtml(video.title)}</h3>
-                <span class="text-[11px] text-yt-muted">${new Date(video.created_at).toLocaleDateString('fr-FR')}</span>
-              </div>
-
-              <!-- Stats -->
-              <div class="grid grid-cols-3 gap-2 pt-2 border-t border-yt-border text-center text-xs">
-                <div>
-                  <span class="block text-[10px] text-yt-muted uppercase">Vues</span>
-                  <span class="font-extrabold text-yt-text">${formatNumber(video.views)}</span>
-                </div>
-                <div>
-                  <span class="block text-[10px] text-yt-muted uppercase">Abonnés</span>
-                  <span class="font-extrabold text-emerald-600">+${formatNumber(video.subscribers_gained)}</span>
-                </div>
-                <div>
-                  <span class="block text-[10px] text-yt-muted uppercase">Revenus</span>
-                  <span class="font-extrabold text-yt-text">${formatCurrency(video.revenue)}</span>
-                </div>
-              </div>
-            </div>
+        const format = FORMAT_LABELS[video.format] || video.format || 'Vidéo';
+        const topic = TOPIC_LABELS[video.topic] || video.topic || 'Général';
+        const formatBadgeColor = video.format === 'short' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
+        return `<div class="bg-white rounded-2xl border border-yt-border overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
+          <div class="video-thumbnail bg-gradient-to-br from-gray-800 to-gray-900 relative flex items-center justify-center p-4 text-white">
+            <span class="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${formatBadgeColor}">${escapeHtml(format)}</span>
+            <span class="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-[10px] rounded font-mono">${escapeHtml(topic)}</span>
+            <div class="text-center space-y-1"><i class="fa-solid fa-play text-2xl text-yt-red opacity-80"></i><h4 class="font-bold text-xs line-clamp-2 px-2">${escapeHtml(video.title)}</h4></div>
           </div>
-        `;
+          <div class="p-4 flex-1 flex flex-col justify-between space-y-3"><div><h3 class="font-bold text-sm text-yt-text line-clamp-1">${escapeHtml(video.title)}</h3><span class="text-[11px] text-yt-muted">${video.created_at ? new Date(video.created_at).toLocaleDateString('fr-FR') : ''}</span></div>
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-yt-border text-center text-xs"><div><span class="block text-[10px] text-yt-muted uppercase">Vues</span><span class="font-extrabold text-yt-text">${formatNumber(video.views)}</span></div><div><span class="block text-[10px] text-yt-muted uppercase">Abonnés</span><span class="font-extrabold text-emerald-600">+${formatNumber(video.subscribers_gained)}</span></div><div><span class="block text-[10px] text-yt-muted uppercase">Revenus</span><span class="font-extrabold text-yt-text">${formatCurrency(video.revenue)}</span></div></div></div></div>`;
       }).join('');
     }
 
     function renderLeaderboard() {
       const tbody = document.getElementById('leaderboard-table-body');
       if (!leaderboardData || leaderboardData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-yt-muted">Aucun créateur enregistré.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-yt-muted">Aucun créateur enregistré pour le moment.</td></tr>`;
         return;
       }
-
-      tbody.innerHTML = leaderboardData.map((creator, idx) => {
+      tbody.innerHTML = leaderboardData.map((creator, index) => {
         const isMe = currentCreator && creator.id === currentCreator.id;
-        const rank = idx + 1;
-
-        let rankBadgeClass = "bg-gray-100 text-gray-700";
-        if (rank === 1) rankBadgeClass = "bg-amber-100 text-amber-800 font-bold";
-        else if (rank === 2) rankBadgeClass = "bg-slate-200 text-slate-800 font-bold";
-        else if (rank === 3) rankBadgeClass = "bg-amber-700/10 text-amber-900 font-bold";
-
-        return `
-          <tr class="${isMe ? 'bg-red-50/60 font-semibold' : 'hover:bg-yt-hover'} transition">
-            <td class="py-3 px-4">
-              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${rankBadgeClass}">
-                ${rank}
-              </span>
-            </td>
-            <td class="py-3 px-4 flex items-center gap-2">
-              <div class="w-7 h-7 rounded-full bg-yt-red text-white flex items-center justify-center text-xs font-bold shrink-0">
-                ${(creator.channel_name || 'Y')[0].toUpperCase()}
-              </div>
-              <span class="truncate max-w-[180px]">${escapeHtml(creator.channel_name)}</span>
-              ${isMe ? '<span class="text-[10px] bg-yt-red text-white px-1.5 py-0.5 rounded font-bold">VOUS</span>' : ''}
-            </td>
-            <td class="py-3 px-4 text-right font-mono text-xs font-bold">${formatNumber(creator.subscribers)}</td>
-            <td class="py-3 px-4 text-right font-mono text-xs text-emerald-700">${formatCurrency(creator.cash)}</td>
-          </tr>
-        `;
+        const rank = index + 1;
+        let rankBadgeClass = 'bg-gray-100 text-gray-700';
+        if (rank === 1) rankBadgeClass = 'bg-amber-100 text-amber-800 font-bold';
+        else if (rank === 2) rankBadgeClass = 'bg-slate-200 text-slate-800 font-bold';
+        else if (rank === 3) rankBadgeClass = 'bg-amber-700/10 text-amber-900 font-bold';
+        return `<tr class="${isMe ? 'bg-red-50/60 font-semibold' : 'hover:bg-yt-hover'} transition"><td class="py-3 px-4"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${rankBadgeClass}">${rank}</span></td><td class="py-3 px-4"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-yt-red text-white flex items-center justify-center text-xs font-bold shrink-0">${escapeHtml((creator.channel_name || 'Y').charAt(0).toUpperCase())}</div><span class="truncate max-w-[180px]">${escapeHtml(creator.channel_name)}</span>${isMe ? '<span class="text-[10px] bg-yt-red text-white px-1.5 py-0.5 rounded font-bold">VOUS</span>' : ''}</div></td><td class="py-3 px-4 text-right font-mono text-xs font-bold">${formatNumber(creator.subscribers)}</td><td class="py-3 px-4 text-right font-mono text-xs text-emerald-700">${formatCurrency(creator.cash)}</td></tr>`;
       }).join('');
     }
 
     function renderMarketTrends() {
       const container = document.getElementById('market-trends-container');
-      const trends = ['Gaming', 'Tech', 'Vlog', 'Drama', 'Humour'];
-      const activeTrend = worldState?.trending_topic || 'Gaming';
-
-      container.innerHTML = trends.map(t => {
-        const isHot = t === activeTrend;
-        return `
-          <span class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition ${isHot ? 'bg-yt-red text-white shadow-sm' : 'bg-gray-100 text-yt-muted'}">
-            ${isHot ? '<i class="fa-solid fa-fire text-amber-300"></i>' : ''}
-            ${t}
-            ${isHot ? '<span class="text-[9px] bg-white/20 px-1 rounded">2x Vues</span>' : ''}
-          </span>
-        `;
+      if (!container) return;
+      const trends = ['gaming', 'tech', 'lifestyle', 'humour', 'musique', 'sport', 'cuisine'];
+      const activeTrend = worldState?.trend_topic || worldState?.trending_topic || 'gaming';
+      container.innerHTML = trends.map(topic => {
+        const active = topic === activeTrend;
+        const label = TOPIC_LABELS[topic] || topic;
+        return `<span class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition ${active ? 'bg-yt-red text-white shadow-sm' : 'bg-gray-100 text-yt-muted'}">${active ? '<i class="fa-solid fa-fire text-amber-300"></i>' : ''}${escapeHtml(label)}${active ? '<span class="text-[9px] bg-white/20 px-1 rounded">Tendance</span>' : ''}</span>`;
       }).join('');
     }
 
@@ -881,102 +926,76 @@
         container.innerHTML = `<div class="p-3 bg-gray-50 rounded-xl text-xs text-yt-muted text-center">Aucune activité récente.</div>`;
         return;
       }
-
-      container.innerHTML = creatorVideos.slice(0, 5).map(v => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-xs hover:bg-gray-100 transition">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-red-100 text-yt-red flex items-center justify-center font-bold">
-              <i class="fa-solid fa-video"></i>
-            </div>
-            <div>
-              <div class="font-bold text-yt-text line-clamp-1">${escapeHtml(v.title)}</div>
-              <div class="text-[10px] text-yt-muted">${new Date(v.created_at).toLocaleTimeString('fr-FR')}</div>
-            </div>
-          </div>
-          <div class="text-right font-mono">
-            <span class="block text-emerald-600 font-bold">+${formatCurrency(v.revenue)}</span>
-            <span class="text-[10px] text-yt-muted">${formatNumber(v.views)} views</span>
-          </div>
-        </div>
-      `).join('');
+      container.innerHTML = creatorVideos.slice(0, 5).map(video => `<div class="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl text-xs hover:bg-gray-100 transition"><div class="flex items-center gap-3 min-w-0"><div class="w-8 h-8 rounded-lg bg-red-100 text-yt-red flex items-center justify-center font-bold shrink-0"><i class="fa-solid fa-video"></i></div><div class="min-w-0"><div class="font-bold text-yt-text line-clamp-1">${escapeHtml(video.title)}</div><div class="text-[10px] text-yt-muted">${video.created_at ? new Date(video.created_at).toLocaleTimeString('fr-FR') : ''}</div></div></div><div class="text-right font-mono shrink-0"><span class="block text-emerald-600 font-bold">+${formatCurrency(video.revenue)}</span><span class="text-[10px] text-yt-muted">${formatNumber(video.views)} vues</span></div></div>`).join('');
     }
 
     function updateBadBuzzTargets() {
       const select = document.getElementById('badbuzz-target');
-      if (!leaderboardData) return;
-
-      const targets = leaderboardData.filter(c => !currentCreator || c.id !== currentCreator.id);
-      select.innerHTML = '<option value="">-- Sélectionnez un Créateur --</option>' +
-        targets.map(t => `<option value="${t.id}">${escapeHtml(t.channel_name)} (${formatNumber(t.subscribers)} abonnés)</option>`).join('');
+      if (!select) return;
+      const previous = select.value;
+      const targets = (leaderboardData || []).filter(creator => !currentCreator || creator.id !== currentCreator.id);
+      select.innerHTML = '<option value="">-- Sélectionnez un Créateur --</option>' + targets.map(target => `<option value="${escapeHtml(target.id)}">${escapeHtml(target.channel_name)} (${formatNumber(target.subscribers)} abonnés)</option>`).join('');
+      if (targets.some(target => target.id === previous)) select.value = previous;
     }
 
-    // ----------------------------------------------------
-    // NAVIGATION & UTILS
-    // ----------------------------------------------------
+    function formatNumber(value) {
+      const number = Number(value ?? 0);
+      return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number.isFinite(number) ? number : 0);
+    }
+    function formatCurrency(value) {
+      const number = Number(value ?? 0);
+      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(Number.isFinite(number) ? number : 0);
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
     function switchTab(tabId) {
       activeTab = tabId;
-
-      // Hide all tabs
       document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
       document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active-nav'));
-
-      // Show selected
       const targetView = document.getElementById(`view-${tabId}`);
       const targetNav = document.getElementById(`nav-${tabId}`);
-
       if (targetView) targetView.classList.remove('hidden');
       if (targetNav) targetNav.classList.add('active-nav');
-
-      // Tab specific refresh
-      if (tabId === 'leaderboard') refreshLeaderboard();
+      if (tabId === 'leaderboard') refreshLeaderboard().catch(err => showToast(err.message || 'Impossible de charger le classement.', 'error'));
     }
-
     function updateStatusPill(online, text) {
       const pill = document.getElementById('status-pill');
       const statusText = document.getElementById('status-text');
-      statusText.textContent = text;
-
-      if (online) {
-        pill.className = 'hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium';
-      } else {
-        pill.className = 'hidden sm:flex items-center gap-2 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium';
-      }
+      if (statusText) statusText.textContent = text;
+      if (!pill) return;
+      pill.className = online
+        ? 'hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium'
+        : 'hidden sm:flex items-center gap-2 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium';
     }
-
-    function updateDiagnostic(msg) {
-      document.getElementById('diagnostic-msg').textContent = msg;
+    function updateDiagnostic(message) {
+      const el = document.getElementById('diagnostic-msg');
+      if (el) el.textContent = message;
     }
-
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
-
       const bgClass = type === 'error' ? 'bg-red-600 text-white' : type === 'success' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-white';
       toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-lg text-xs font-medium flex items-center gap-2 transition-all transform translate-y-2 pointer-events-auto`;
-      toast.innerHTML = `
-        <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-circle-check' : 'fa-info-circle'}"></i>
-        <span>${escapeHtml(message)}</span>
-      `;
-
+      toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-circle-check' : 'fa-info-circle'}"></i><span>${escapeHtml(message)}</span>`;
       container.appendChild(toast);
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-4');
-        setTimeout(() => toast.remove(), 300);
-      }, 3500);
+      setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-4'); setTimeout(() => toast.remove(), 300); }, 4000);
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    // Toggle Sidebar Collapsed State
     document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('w-64');
       sidebar.classList.toggle('w-16');
-      document.querySelectorAll('.nav-label').forEach(el => el.classList.toggle('hidden'));
+      document.querySelectorAll('.nav-label').forEach(label => label.classList.toggle('hidden'));
     });
+
+    // Expose fonctions référencées par les attributs onclick/onsubmit de l'interface.
+    window.switchTab = switchTab;
+    window.handleCreateCreator = handleCreateCreator;
+    window.handlePublishVideo = handlePublishVideo;
+    window.handleLaunchBadBuzz = handleLaunchBadBuzz;
+    window.updateStudioCalculations = updateStudioCalculations;
+    window.refreshLeaderboard = () => refreshLeaderboard().catch(err => showToast(err.message || 'Erreur du classement.', 'error'));
   </script>
 </body>
 </html>
