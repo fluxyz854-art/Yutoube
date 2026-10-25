@@ -1,254 +1,982 @@
-<!doctype html>
-<html lang="fr">
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-[#f9f9f9]">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0b12">
-  <title>Creator Tycoon — YouTube Simulator</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creator Tycoon — YouTube Studio Edition</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            yt: {
+              red: '#FF0000',
+              darkred: '#CC0000',
+              bg: '#F9F9F9',
+              card: '#FFFFFF',
+              text: '#0F0F0F',
+              muted: '#606060',
+              border: '#E5E5E5',
+              hover: '#F2F2F2'
+            }
+          },
+          fontFamily: {
+            sans: ['Roboto', 'Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <style>
-    :root{--bg:#090a10;--panel:#12141f;--panel2:#171a28;--line:#292d40;--text:#f5f6fc;--muted:#9ca3ba;--purple:#9b87ff;--pink:#ff5da8;--green:#67e8b0;--yellow:#ffd166;--red:#ff6b7b;--radius:18px}
-    *{box-sizing:border-box} html{background:var(--bg)} body{margin:0;color:var(--text);background:radial-gradient(ellipse at 75% -20%,#30235b 0,transparent 36%),radial-gradient(ellipse at -10% 45%,#172747 0,transparent 30%),var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
-    button,input,select{font:inherit} button{cursor:pointer;border:0} button:disabled{opacity:.5;cursor:not-allowed} .wrap{max-width:1440px;margin:auto;padding:24px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.brand-icon{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#8d6bff,#ff5da8);display:grid;place-items:center;font-size:22px;box-shadow:0 8px 30px #9b87ff33}.brand h1{font-size:20px;margin:0;letter-spacing:-.5px}.brand p{color:var(--muted);margin:3px 0 0;font-size:12px}.top-right{display:flex;align-items:center;gap:10px}.status{font-size:12px;border:1px solid var(--line);padding:9px 12px;border-radius:999px;background:#11131dcf;color:var(--muted);display:flex;align-items:center;gap:8px}.dot{width:7px;height:7px;background:var(--yellow);border-radius:50%}.status.online .dot{background:var(--green);box-shadow:0 0 12px #67e8b0}.ghost{background:#202335;color:#e8e9f5;border:1px solid #353951;border-radius:11px;padding:10px 13px;font-weight:650;font-size:12px}.ghost:hover{background:#2b2f45}
-    .layout{display:grid;grid-template-columns:220px minmax(360px,1fr) 315px;gap:18px;align-items:start}.sidebar,.panel{background:linear-gradient(180deg,#151724f2,#11131df2);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 15px 55px #0002}.sidebar{padding:17px;position:sticky;top:18px}.profile{display:flex;gap:11px;align-items:center;padding:5px 3px 16px;border-bottom:1px solid var(--line)}.avatar{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#3a7bd5,#8e44ad);display:grid;place-items:center;font-size:20px}.profile-name{font-weight:750;font-size:13px;overflow-wrap:anywhere}.small{font-size:11px;color:var(--muted);margin-top:4px}.nav{display:grid;gap:7px;margin-top:17px}.nav button{display:flex;align-items:center;gap:11px;text-align:left;padding:12px;border-radius:12px;background:transparent;color:#b5bad0;font-weight:650;font-size:13px}.nav button.active,.nav button:hover{background:#292442;color:#fff}.nav .ico{width:21px;text-align:center;font-size:16px}.side-note{margin-top:19px;background:#1a1d2c;border-radius:13px;padding:13px}.side-note strong{font-size:12px}.side-note p{font-size:11px;line-height:1.55;color:var(--muted);margin:7px 0 0}
-    .main{min-width:0;display:grid;gap:17px}.hero{overflow:hidden;position:relative;padding:25px;background:linear-gradient(112deg,#252048,#181929 58%,#22182f);border:1px solid #38304f;border-radius:var(--radius);min-height:190px}.hero:after{content:"▶";position:absolute;right:24px;top:24px;width:96px;height:96px;border-radius:30px;transform:rotate(-10deg);display:grid;place-items:center;font-size:47px;color:#fff;background:linear-gradient(135deg,#a18aff,#ff5ba8);box-shadow:0 18px 65px #9b87ff4a}.eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:800;color:#c1b6ff;text-transform:uppercase}.hero h2{font-size:clamp(24px,3vw,35px);line-height:1.1;letter-spacing:-1.1px;margin:12px 120px 9px 0}.hero p{font-size:13px;color:#c4c5dc;max-width:440px;line-height:1.55;margin:0}.hero-badges{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}.pill{font-size:11px;border:1px solid #ffffff24;background:#ffffff0c;padding:6px 9px;border-radius:999px;color:#e6e1ff}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.stat{padding:15px 16px;background:var(--panel);border:1px solid var(--line);border-radius:15px;min-width:0}.stat-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11px;gap:6px}.stat-icon{font-size:17px}.stat-number{font-size:clamp(18px,2vw,25px);font-weight:800;letter-spacing:-.7px;margin-top:11px;overflow-wrap:anywhere}.stat-sub{font-size:10px;color:var(--muted);margin-top:5px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:15px}.section-head h3{margin:0;font-size:15px;letter-spacing:-.3px}.muted{color:var(--muted)}.tag{font-size:10px;font-weight:750;color:#c9c0ff;background:#292343;border-radius:7px;padding:6px 8px}.panel{padding:19px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field{display:grid;gap:7px;min-width:0}.field.full{grid-column:1/-1}.field label{font-size:11px;color:#bcc0d3;font-weight:700}.input{width:100%;background:#0c0e17;color:#f5f6fc;border:1px solid #31354a;outline:0;border-radius:10px;padding:11px 12px;min-height:42px}.input:focus{border-color:#8c78f0;box-shadow:0 0 0 3px #8c78f01c}.range-line{display:flex;align-items:center;gap:12px}.range-line input{width:100%;accent-color:var(--purple)}.range-value{min-width:50px;text-align:right;color:#e0d9ff;font-size:12px;font-weight:800}.hint{color:var(--muted);font-size:10px;line-height:1.45}.primary{color:#fff;background:linear-gradient(100deg,#8a6cf1,#b36be9 50%,#ec68b2);padding:12px 15px;border-radius:11px;font-size:12px;font-weight:800;box-shadow:0 9px 25px #9b87ff22;transition:transform .15s}.primary:hover{transform:translateY(-1px);filter:brightness(1.08)}.full-btn{width:100%;margin-top:15px}.primary.red{background:linear-gradient(100deg,#ff5c7b,#c34e9c)}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric-mini{border:1px solid var(--line);background:#0f111b;border-radius:12px;padding:12px}.metric-mini b{font-size:15px}.metric-mini div{font-size:10px;color:var(--muted);margin-bottom:7px}.right{display:grid;gap:17px;min-width:0}.rank-list{display:grid;gap:7px}.rank-row{display:grid;grid-template-columns:25px 1fr auto;align-items:center;gap:9px;padding:9px;border-radius:11px;background:#0d0f18;border:1px solid #232638}.rank-num{font-size:11px;font-weight:850;color:#a6abc0;text-align:center}.rank-num.gold{color:#ffd166}.rank-num.silver{color:#ccd3e1}.rank-num.bronze{color:#db9f75}.rank-name{font-size:11px;font-weight:750;overflow-wrap:anywhere}.rank-extra{font-size:10px;color:var(--muted);margin-top:4px}.rank-subs{font-weight:800;font-size:11px;text-align:right;white-space:nowrap}.rank-row.me{border-color:#8e78f4;background:#201b35}.empty{padding:18px 12px;border:1px dashed #36394f;border-radius:13px;color:var(--muted);font-size:12px;line-height:1.55;text-align:center}.feed{display:grid;gap:10px}.feed-item{padding:10px 11px;border-left:2px solid #8e78f4;background:#0e1019;border-radius:0 9px 9px 0}.feed-item.bad{border-color:var(--pink)}.feed-item p{font-size:11px;line-height:1.45;margin:0;color:#d7d9e7;overflow-wrap:anywhere}.feed-item time{display:block;color:#7f859d;font-size:9px;margin-top:6px}.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);max-width:min(92vw,560px);padding:12px 16px;background:#202337;border:1px solid #464a65;border-radius:12px;color:#fff;font-size:12px;box-shadow:0 20px 60px #0008;z-index:20;display:none}.toast.show{display:block}.overlay{position:fixed;inset:0;z-index:30;background:#05060bd9;backdrop-filter:blur(10px);display:none;place-items:center;padding:18px}.overlay.show{display:grid}.modal{width:min(100%,530px);max-height:90vh;overflow:auto;background:#151724;border:1px solid #34374c;border-radius:20px;padding:23px;box-shadow:0 30px 100px #0009}.modal h2{font-size:22px;margin:0 0 8px}.modal p{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 18px}.modal .field{margin-bottom:13px}.modal a{color:#c7baff}.warning{border:1px solid #51442c;background:#292316;color:#e7d5a3;font-size:11px;line-height:1.5;padding:11px;border-radius:10px;margin:12px 0}.foot{padding:8px;text-align:center;color:#72788f;font-size:10px}.hidden{display:none!important}.offline-banner{padding:12px 14px;border:1px solid #5f4b2e;background:#211c12;border-radius:12px;color:#dec998;font-size:12px;line-height:1.5}.simulation-status{padding:10px 13px;border:1px solid #294a40;background:#101d1a;border-radius:12px;color:#a7f3d0;font-size:11px;line-height:1.5;margin-top:8px;overflow-wrap:anywhere}.simulation-status.error{border-color:#6b303a;background:#231317;color:#ffc3cc}.table-title{display:flex;justify-content:space-between;gap:10px;align-items:center}.my-rank{font-size:10px;color:#d3c8ff;background:#2a2345;padding:7px 9px;border-radius:9px;white-space:nowrap}
-    @media(max-width:1150px){.layout{grid-template-columns:190px minmax(0,1fr)}.right{grid-column:2;grid-template-columns:1fr 1fr}.leader-panel{grid-row:span 2}.sidebar{grid-row:span 2}}
-    @media(max-width:760px){.wrap{padding:13px}.top{align-items:flex-start}.top-right{flex-wrap:wrap;justify-content:flex-end}.status{display:none}.layout{grid-template-columns:1fr}.sidebar{position:static}.profile{padding-bottom:10px}.nav{grid-template-columns:repeat(4,1fr);margin-top:10px}.nav button{justify-content:center;padding:10px 5px;font-size:11px;gap:5px;flex-direction:column}.side-note{display:none}.right{grid-column:auto;grid-template-columns:1fr}.hero{padding:20px;min-height:175px}.hero:after{width:61px;height:61px;border-radius:19px;font-size:28px;right:15px;top:15px}.hero h2{margin-right:65px;font-size:25px}.hero p{font-size:12px}.stats{gap:7px}.stat{padding:12px 10px}.stat-top{font-size:9px}.stat-number{font-size:18px}.stat-sub{font-size:9px}.panel{padding:15px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+    body {
+      font-family: 'Roboto', sans-serif;
+      color: #0F0F0F;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #999;
+    }
+    .video-thumbnail {
+      aspect-ratio: 16/9;
+    }
+    .active-nav {
+      background-color: #F2F2F2;
+      color: #FF0000;
+      font-weight: 500;
+      border-left: 4px solid #FF0000;
+    }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <header class="top">
-      <div class="brand"><div class="brand-icon">▶</div><div><h1>CREATOR <span style="color:var(--purple)">TYCOON</span></h1><p>Construis ta chaîne. Domine le classement.</p></div></div>
-      <div class="top-right"><div class="status" id="connectionStatus"><span class="dot"></span><span id="connectionText">Serveur non configuré</span></div><button class="ghost" id="settingsBtn">⚙ Connexion serveur</button></div>
-    </header>
-    <div class="layout">
-      <aside class="sidebar">
-        <div class="profile"><div class="avatar">🎬</div><div style="min-width:0"><div class="profile-name" id="sidebarName">Créateur non connecté</div><div class="small" id="sidebarLevel">Connecte-toi pour jouer</div></div></div>
-        <nav class="nav">
-          <button class="active" data-scroll="studio"><span class="ico">📹</span>Studio</button>
-          <button data-scroll="leaderboard"><span class="ico">🏆</span>Classement</button>
-          <button data-scroll="videoHistory"><span class="ico">📚</span>Mes vidéos</button>
-          <button data-scroll="badbuzz"><span class="ico">🧨</span>Bad buzz</button>
+<body class="h-full flex flex-col bg-[#F9F9F9] text-[#0F0F0F] antialiased select-none">
+
+  <!-- TOP HEADER -->
+  <header class="h-14 bg-white border-b border-yt-border px-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+    <div class="flex items-center gap-4">
+      <button id="btn-toggle-sidebar" class="p-2 hover:bg-yt-hover rounded-full text-lg w-10 h-10 flex items-center justify-center transition">
+        <i class="fa-solid fa-bars text-yt-muted"></i>
+      </button>
+      <div class="flex items-center gap-2 cursor-pointer" onclick="switchTab('dashboard')">
+        <div class="bg-yt-red text-white w-8 h-6 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm">
+          <i class="fa-solid fa-play"></i>
+        </div>
+        <span class="font-bold text-lg tracking-tight text-yt-text flex items-center gap-1">
+          YouTube <span class="text-xs font-semibold uppercase px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-yt-muted">Studio Tycoon</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Server Status & Channel Info -->
+    <div class="flex items-center gap-3">
+      <!-- Sync Indicator -->
+      <div id="status-pill" class="hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span id="status-text">Serveur En Ligne</span>
+      </div>
+
+      <!-- Quick Stats Top Bar -->
+      <div class="hidden md:flex items-center gap-4 text-xs border-l border-r border-yt-border px-4 py-1 bg-gray-50 rounded-lg">
+        <div class="flex items-center gap-1.5">
+          <i class="fa-solid fa-users text-yt-red"></i>
+          <span class="font-bold" id="top-subscribers">0</span> <span class="text-yt-muted">abonnés</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <i class="fa-solid fa-euro-sign text-emerald-600"></i>
+          <span class="font-bold" id="top-cash">0,00 €</span>
+        </div>
+      </div>
+
+      <!-- Channel Avatar / Profile -->
+      <div id="channel-avatar-badge" class="flex items-center gap-2 cursor-pointer hover:bg-yt-hover p-1 rounded-full transition" onclick="switchTab('settings')">
+        <div id="creator-avatar" class="w-8 h-8 rounded-full bg-yt-red text-white flex items-center justify-center font-bold text-sm shadow">
+          ?
+        </div>
+        <span id="creator-name-header" class="hidden lg:block text-xs font-semibold max-w-[120px] truncate">
+          Chargement...
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- LEFT NAVIGATION RAIL / SIDEBAR -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-yt-border flex flex-col justify-between shrink-0 transition-all duration-300 z-20">
+      <div class="py-3">
+        <nav class="space-y-1 px-2">
+          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl hover:bg-yt-hover active-nav transition">
+            <i class="fa-solid fa-chart-line text-lg w-6 text-center"></i>
+            <span class="nav-label">Tableau de bord</span>
+          </button>
+
+          <button onclick="switchTab('studio')" id="nav-studio" class="nav-item w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl hover:bg-yt-hover transition">
+            <i class="fa-solid fa-square-plus text-lg w-6 text-center text-yt-red"></i>
+            <span class="nav-label">Créer une Vidéo</span>
+          </button>
+
+          <button onclick="switchTab('videos')" id="nav-videos" class="nav-item w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl hover:bg-yt-hover transition">
+            <i class="fa-solid fa-photo-film text-lg w-6 text-center"></i>
+            <span class="nav-label">Mes Vidéos</span>
+          </button>
+
+          <button onclick="switchTab('leaderboard')" id="nav-leaderboard" class="nav-item w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl hover:bg-yt-hover transition">
+            <i class="fa-solid fa-trophy text-lg w-6 text-center text-amber-500"></i>
+            <span class="nav-label">Classement</span>
+          </button>
+
+          <button onclick="switchTab('badbuzz')" id="nav-badbuzz" class="nav-item w-full flex items-center gap-4 px-4 py-3 text-sm font-medium rounded-xl hover:bg-yt-hover transition">
+            <i class="fa-solid fa-burst text-lg w-6 text-center text-purple-600"></i>
+            <span class="nav-label">Bad Buzz & Dramas</span>
+          </button>
         </nav>
-        <div class="side-note"><strong>🌐 Vrai classement en ligne</strong><p>Les abonnés et les scores proviennent de la base partagée. Aucun concurrent fictif n'est ajouté.</p></div>
-      </aside>
+      </div>
 
-      <main class="main">
-        <section class="hero">
-          <div class="eyebrow">Saison en cours · <span id="seasonLabel">en attente du serveur</span></div>
-          <h2>Deviens le prochain<br>roi de la plateforme.</h2>
-          <p>Crée des vidéos, maîtrise les tendances, gagne des abonnés et grimpe dans le classement des vrais joueurs connectés.</p>
-          <div class="hero-badges"><span class="pill" id="trendPill">📈 Tendance : —</span><span class="pill" id="formatPill">🔥 Format : —</span><span class="pill" id="moodPill">🌍 Marché : —</span></div>
-        </section>
-        <div id="offlineBanner" class="offline-banner">Le classement en ligne n'est pas encore connecté. Clique sur <b>Connexion serveur</b>, puis configure ton projet Supabase pour rejoindre les autres joueurs.</div>
-        <div id="simulationStatus" class="simulation-status">Progression automatique : en attente de connexion au serveur.</div>
-        <section class="stats">
-          <div class="stat"><div class="stat-top"><span>Abonnés</span><span class="stat-icon">👥</span></div><div class="stat-number" id="statSubs">—</div><div class="stat-sub" id="statRank">Rang mondial : —</div></div>
-          <div class="stat"><div class="stat-top"><span>Trésorerie</span><span class="stat-icon">💸</span></div><div class="stat-number" id="statCash">—</div><div class="stat-sub">Revenus − production − promo</div></div>
-          <div class="stat"><div class="stat-top"><span>Vues cumulées</span><span class="stat-icon">👁️</span></div><div class="stat-number" id="statViews">—</div><div class="stat-sub" id="statVideos">Vidéos publiées : —</div></div>
-        </section>
-        <section class="panel" id="studio">
-          <div class="section-head"><h3>🎥 Publier une vidéo</h3><span class="tag">STUDIO</span></div>
-          <form id="videoForm">
-            <div class="form-grid">
-              <div class="field full"><label for="videoTitle">Titre de la vidéo</label><input class="input" id="videoTitle" maxlength="60" minlength="3" placeholder="Ex. J'ai testé le setup à 100 €…" required></div>
-              <div class="field"><label for="topic">Thématique</label><select class="input" id="topic"><option value="gaming">🎮 Gaming</option><option value="humour">😂 Humour</option><option value="musique">🎵 Musique</option><option value="sport">🏅 Sport</option><option value="tech">🧠 Tech</option><option value="cuisine">🍜 Cuisine</option><option value="lifestyle">✨ Lifestyle</option></select></div>
-              <div class="field"><label for="format">Format</label><select class="input" id="format"><option value="short">⚡ Short</option><option value="long">🎬 Vidéo longue</option><option value="live">🔴 Live</option></select></div>
-              <div class="field full"><label for="quality">Qualité de production</label><div class="range-line"><input id="quality" type="range" min="1" max="5" value="3"><span class="range-value" id="qualityValue">3 / 5</span></div><div class="hint">Une meilleure qualité augmente le potentiel de vues et la conversion en abonnés, mais coûte plus cher.</div></div>
-              <div class="field full"><label for="promo">Budget de promotion</label><div class="range-line"><input id="promo" type="range" min="0" max="500" step="50" value="100"><span class="range-value" id="promoValue">100 €</span></div><div class="hint">La promotion élargit l'audience, sans garantir un succès. Les tendances du serveur peuvent changer selon l'activité des joueurs.</div></div>
-            </div>
-            <button class="primary full-btn" id="publishBtn" type="submit">🚀 Publier la vidéo</button>
-          </form>
-        </section>
-        <section class="panel" id="videoHistory">
-          <div class="section-head"><h3>📚 Mes vidéos publiées</h3><span class="tag">STATISTIQUES</span></div>
-          <p class="muted" style="font-size:11px;line-height:1.55;margin:0 0 13px">Retrouve tes anciennes vidéos et suis leurs vues, les abonnés gagnés et les revenus. Les statistiques évoluent aussi entre deux publications.</p>
-          <div class="feed" id="videoList"><div class="empty">Tes vidéos apparaîtront ici après connexion.</div></div>
-        </section>
-        <section class="panel" id="badbuzz">
-          <div class="section-head"><h3>🧨 Lancer un bad buzz</h3><span class="tag" style="background:#3a1f31;color:#ffacc9">RISQUÉ</span></div>
-          <p class="muted" style="font-size:11px;line-height:1.55;margin:0 0 15px">Déclenche une polémique de jeu contre un créateur réel du classement. Un succès peut lui faire perdre des abonnés, mais un échec nuit à ta réputation. Actions limitées par un délai de récupération.</p>
-          <form id="badBuzzForm">
-            <div class="form-grid">
-              <div class="field full"><label for="target">Cible (joueur connecté)</label><select class="input" id="target" required><option value="">Chargement du classement…</option></select></div>
-              <div class="field full"><label for="claim">Type de polémique (prédéfini)</label><select class="input" id="claim"><option value="copie">Accusation de copier le contenu</option><option value="pub">Soupçon de publicité cachée</option><option value="ego">Drama après une interview</option></select></div>
-            </div>
-            <button class="primary red full-btn" id="badBuzzBtn" type="submit">Lancer la polémique</button>
-            <div class="hint" style="margin-top:10px">Ces accusations sont des événements fictifs de gameplay, pas des déclarations réelles.</div>
-          </form>
-        </section>
-        <div class="foot">Creator Tycoon · Progression partagée avec les joueurs du même serveur</div>
-      </main>
+      <!-- Bottom Settings & Server Link -->
+      <div class="p-3 border-t border-yt-border space-y-1">
+        <button onclick="switchTab('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-4 px-4 py-2.5 text-sm font-medium rounded-xl hover:bg-yt-hover transition text-yt-muted">
+          <i class="fa-solid fa-gear text-lg w-6 text-center"></i>
+          <span class="nav-label">Configuration</span>
+        </button>
+        <div class="px-4 py-2 text-[11px] text-yt-muted flex flex-col gap-1">
+          <span class="font-medium">Creator Simulation Engine</span>
+          <span id="diagnostic-msg" class="truncate text-[10px] text-gray-400">Prêt</span>
+        </div>
+      </div>
+    </aside>
 
-      <aside class="right">
-        <section class="panel leader-panel" id="leaderboard">
-          <div class="section-head"><div><h3>🏆 Classement mondial</h3><div class="small">Trié par abonnés · données en ligne</div></div><span class="tag">LIVE</span></div>
-          <div class="table-title" style="margin-bottom:12px"><span class="muted" style="font-size:10px" id="playerCount">0 joueur</span><span class="my-rank" id="myRankBadge">Ton rang : —</span></div>
-          <div class="rank-list" id="rankList"><div class="empty">Pas encore connecté à la base. Le classement affichera les autres joueurs ayant rejoint ce serveur.</div></div>
-        </section>
-        <section class="panel">
-          <div class="section-head"><h3>📡 Activité du serveur</h3><span class="tag">FIL GLOBAL</span></div>
-          <div class="feed" id="activityFeed"><div class="empty">Les publications et bad buzz des joueurs apparaîtront ici après connexion.</div></div>
-        </section>
-        <section class="panel">
-          <div class="section-head"><h3>🧠 Conseils du marché</h3></div>
-          <div class="feed">
-            <div class="feed-item"><p><b>Surveille la tendance.</b> Les vidéos dans la thématique en vogue peuvent obtenir plus de vues.</p></div>
-            <div class="feed-item"><p><b>Calcule tes coûts.</b> Une vidéo très chère peut te faire perdre de l'argent si elle ne décolle pas.</p></div>
-            <div class="feed-item bad"><p><b>Le bad buzz est risqué.</b> Une mauvaise manœuvre peut réduire ta réputation et tes abonnés.</p></div>
+    <!-- CONTENT VIEWPORT ("THE SCREEN") -->
+    <main class="flex-1 overflow-y-auto bg-[#F9F9F9] p-4 md:p-6 lg:p-8">
+
+      <!-- ================= 1. DASHBOARD VIEW ================= -->
+      <section id="view-dashboard" class="tab-view space-y-6 max-w-7xl mx-auto">
+        <!-- Welcome Banner -->
+        <div class="bg-white rounded-2xl p-6 border border-yt-border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <h1 class="text-2xl font-bold tracking-tight" id="dash-channel-title">Ma Chaîne YouTube</h1>
+              <span id="dash-level-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-yt-red text-white">Niveau 1</span>
+            </div>
+            <p class="text-yt-muted text-sm">Voici les performances en temps réel de votre chaîne et l'état du marché.</p>
           </div>
-        </section>
-      </aside>
+          <button onclick="switchTab('studio')" class="bg-yt-red hover:bg-yt-darkred text-white font-medium px-5 py-2.5 rounded-full shadow-md flex items-center gap-2 transition transform active:scale-95">
+            <i class="fa-solid fa-plus"></i>
+            <span>Publier une vidéo</span>
+          </button>
+        </div>
+
+        <!-- Realtime Market Trends Pills -->
+        <div class="bg-white p-4 rounded-2xl border border-yt-border shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-yt-muted flex items-center gap-2">
+              <i class="fa-solid fa-arrow-trend-up text-yt-red"></i> Tendances du Marché Serveur
+            </span>
+            <span class="text-xs text-gray-400">Mise à jour en temps réel</span>
+          </div>
+          <div class="flex flex-wrap gap-2" id="market-trends-container">
+            <!-- Dynamic trend pills inserted here -->
+            <span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-medium animate-pulse">Chargement des tendances...</span>
+          </div>
+        </div>
+
+        <!-- KPI Analytics Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Subscribers Card -->
+          <div class="bg-white p-5 rounded-2xl border border-yt-border shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-yt-muted">
+              <span class="text-xs font-semibold uppercase">Abonnés</span>
+              <div class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-yt-red">
+                <i class="fa-solid fa-users"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold" id="kpi-subscribers">0</div>
+            <p class="text-xs text-emerald-600 font-medium flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up"></i> <span id="kpi-sub-growth">+0 cette session</span>
+            </p>
+          </div>
+
+          <!-- Total Revenue / Cash -->
+          <div class="bg-white p-5 rounded-2xl border border-yt-border shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-yt-muted">
+              <span class="text-xs font-semibold uppercase">Revenus (Cash)</span>
+              <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <i class="fa-solid fa-wallet"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-emerald-700" id="kpi-cash">0,00 €</div>
+            <p class="text-xs text-yt-muted">Prêt à investir dans le studio</p>
+          </div>
+
+          <!-- Total Views Card -->
+          <div class="bg-white p-5 rounded-2xl border border-yt-border shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-yt-muted">
+              <span class="text-xs font-semibold uppercase">Vues Cumulées</span>
+              <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                <i class="fa-solid fa-eye"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold" id="kpi-views">0</div>
+            <p class="text-xs text-yt-muted">Sur toutes vos vidéos</p>
+          </div>
+
+          <!-- Leaderboard Rank Card -->
+          <div class="bg-white p-5 rounded-2xl border border-yt-border shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-yt-muted">
+              <span class="text-xs font-semibold uppercase">Rang Serveur</span>
+              <div class="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
+                <i class="fa-solid fa-award"></i>
+              </div>
+            </div>
+            <div class="text-3xl font-extrabold text-amber-600" id="kpi-rank">#-</div>
+            <p class="text-xs text-yt-muted">Basé sur le nombre d'abonnés</p>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed & Server Events -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-col-span-2 bg-white rounded-2xl border border-yt-border p-5 shadow-sm space-y-4 lg:col-span-2">
+            <h3 class="font-bold text-base flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-yt-muted"></i>
+              Historique des Activités
+            </h3>
+            <div id="activity-log" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+              <div class="p-3 bg-gray-50 rounded-xl text-xs text-yt-muted text-center">
+                Aucune activité récente. Lancez une vidéo pour commencer !
+              </div>
+            </div>
+          </div>
+
+          <!-- Channel Stats Quick Peek -->
+          <div class="bg-white rounded-2xl border border-yt-border p-5 shadow-sm space-y-4">
+            <h3 class="font-bold text-base flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-yt-muted"></i>
+              Conseil de Créateur
+            </h3>
+            <div class="p-4 bg-red-50 border border-red-100 rounded-xl space-y-2 text-xs text-red-900">
+              <div class="font-bold flex items-center gap-1 text-yt-red">
+                <i class="fa-solid fa-lightbulb"></i> Maximisez le Buzz !
+              </div>
+              <p>Produisez des vidéos correspondant au sujet tendance actuel pour doubler vos vues. Investissez dans la qualité pour maximiser les retombées en abonnés.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. STUDIO / CREATE VIDEO VIEW ================= -->
+      <section id="view-studio" class="tab-view hidden space-y-6 max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl p-6 border border-yt-border shadow-sm space-y-6">
+          <div class="border-b border-yt-border pb-4 flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-video text-yt-red"></i> YouTube Studio — Créer du Contenu
+              </h2>
+              <p class="text-xs text-yt-muted">Configurez votre nouvelle vidéo pour faire exploser votre chaîne !</p>
+            </div>
+            <span class="text-xs font-semibold px-3 py-1 bg-gray-100 rounded-full border border-gray-200">
+              Solde: <span id="studio-current-cash" class="text-emerald-600 font-bold">0,00 €</span>
+            </span>
+          </div>
+
+          <form id="form-create-video" onsubmit="handlePublishVideo(event)" class="space-y-6">
+            <!-- Video Title -->
+            <div class="space-y-1">
+              <label class="block text-xs font-bold uppercase tracking-wider text-yt-muted">Titre de la vidéo</label>
+              <input type="text" id="video-title" required placeholder="Ex: J'AI PASSÉ 24H DANS UNBUNKER ! (Çà tourne mal)"
+                class="w-full px-4 py-3 bg-gray-50 border border-yt-border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-yt-red text-sm transition">
+            </div>
+
+            <!-- Topic & Format Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Topic -->
+              <div class="space-y-1">
+                <label class="block text-xs font-bold uppercase tracking-wider text-yt-muted">Thématique / Sujet</label>
+                <select id="video-topic" class="w-full px-4 py-3 bg-gray-50 border border-yt-border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-yt-red text-sm transition">
+                  <option value="Gaming">🎮 Gaming & Esports</option>
+                  <option value="Tech">💻 Tech & Innovation</option>
+                  <option value="Vlog">🤳 Vlog & Lifestyle</option>
+                  <option value="Drama">🧨 Drama & Reactions</option>
+                  <option value="Humour">😂 Humour & Entertainment</option>
+                </select>
+              </div>
+
+              <!-- Format -->
+              <div class="space-y-1">
+                <label class="block text-xs font-bold uppercase tracking-wider text-yt-muted">Format</label>
+                <select id="video-format" class="w-full px-4 py-3 bg-gray-50 border border-yt-border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-yt-red text-sm transition">
+                  <option value="Short">⚡ YouTube Short (Rapide & Viral)</option>
+                  <option value="Standard" selected>🎥 Vidéo Standard 1080p</option>
+                  <option value="Documentaire">🎬 Grand Documentaire / Concept 4K</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Quality & Budget Sliders -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-yt-border">
+              <!-- Quality Level Slider -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs">
+                  <span class="font-bold text-yt-muted uppercase">Qualité de Montage</span>
+                  <span id="quality-val-display" class="font-bold text-yt-red">Niveau 1</span>
+                </div>
+                <input type="range" id="video-quality" min="1" max="5" value="1" step="1" oninput="updateStudioCalculations()"
+                  class="w-full accent-yt-red cursor-pointer">
+                <div class="flex justify-between text-[10px] text-yt-muted">
+                  <span>Basique (0 €)</span>
+                  <span>Pro (500 €)</span>
+                </div>
+              </div>
+
+              <!-- Promo Budget Slider -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs">
+                  <span class="font-bold text-yt-muted uppercase">Budget Promotion (Ads)</span>
+                  <span id="promo-val-display" class="font-bold text-emerald-600">0 €</span>
+                </div>
+                <input type="range" id="video-promo" min="0" max="1000" value="0" step="50" oninput="updateStudioCalculations()"
+                  class="w-full accent-emerald-600 cursor-pointer">
+                <div class="flex justify-between text-[10px] text-yt-muted">
+                  <span>0 €</span>
+                  <span>1 000 €</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Total Cost Summary & Action Button -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-red-50 border border-red-100 rounded-xl">
+              <div>
+                <span class="text-xs text-yt-muted block">Coût total de production</span>
+                <span id="total-production-cost" class="text-2xl font-extrabold text-yt-red">0,00 €</span>
+              </div>
+              <button type="submit" id="btn-publish" class="w-full sm:w-auto bg-yt-red hover:bg-yt-darkred text-white font-bold px-8 py-3 rounded-full shadow-lg transition flex items-center justify-center gap-2 transform active:scale-95">
+                <i class="fa-solid fa-upload"></i>
+                <span>Mettre en Ligne</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= 3. MES VIDÉOS VIEW ================= -->
+      <section id="view-videos" class="tab-view hidden space-y-6 max-w-7xl mx-auto">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold flex items-center gap-2">
+              <i class="fa-solid fa-film text-yt-red"></i> Contenu de la chaîne
+            </h2>
+            <p class="text-xs text-yt-muted">Consultez les statistiques individuelles de vos vidéos publiées.</p>
+          </div>
+          <button onclick="switchTab('studio')" class="bg-yt-red text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-yt-darkred transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Nouvelle Vidéo
+          </button>
+        </div>
+
+        <!-- Videos Grid -->
+        <div id="videos-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Dynamic Video Cards inserted here -->
+          <div class="col-span-full py-12 text-center text-yt-muted bg-white rounded-2xl border border-yt-border">
+            <i class="fa-solid fa-circle-notch animate-spin text-2xl mb-2 text-yt-red"></i>
+            <p class="text-sm">Chargement de votre bibliothèque vidéo...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. CLASSEMENT VIEW ================= -->
+      <section id="view-leaderboard" class="tab-view hidden space-y-6 max-w-5xl mx-auto">
+        <div class="bg-white rounded-2xl p-6 border border-yt-border shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-trophy text-amber-500"></i> Top Créateurs du Serveur
+              </h2>
+              <p class="text-xs text-yt-muted">Classement général basé sur le nombre d'abonnés enregistrés en temps réel.</p>
+            </div>
+            <button onclick="refreshLeaderboard()" class="px-3 py-1.5 border border-yt-border rounded-lg text-xs font-medium hover:bg-yt-hover flex items-center gap-1.5">
+              <i class="fa-solid fa-arrows-rotate"></i> Actualiser
+            </button>
+          </div>
+
+          <!-- Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-xs text-yt-muted uppercase border-b border-yt-border">
+                <tr>
+                  <th class="py-3 px-4">Rang</th>
+                  <th class="py-3 px-4">Créateur / Chaîne</th>
+                  <th class="py-3 px-4 text-right">Abonnés</th>
+                  <th class="py-3 px-4 text-right">Cash</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-table-body" class="divide-y divide-yt-border">
+                <tr>
+                  <td colspan="4" class="py-8 text-center text-yt-muted">Chargement du classement...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. BAD BUZZ & DRAMA VIEW ================= -->
+      <section id="view-badbuzz" class="tab-view hidden space-y-6 max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl p-6 border border-yt-border shadow-sm space-y-6">
+          <div>
+            <h2 class="text-xl font-bold flex items-center gap-2 text-purple-700">
+              <i class="fa-solid fa-burst"></i> Centre de Bad Buzz & Dramas
+            </h2>
+            <p class="text-xs text-yt-muted">Attaquez un créateur concurrent pour créer un drama et détourner une partie de son audience ! Attention aux contrecoups.</p>
+          </div>
+
+          <!-- Launch Form -->
+          <form id="form-badbuzz" onsubmit="handleLaunchBadBuzz(event)" class="space-y-4 bg-purple-50 p-5 rounded-2xl border border-purple-100">
+            <div class="space-y-1">
+              <label class="block text-xs font-bold uppercase tracking-wider text-purple-900">Sélectionner la cible du Drama</label>
+              <select id="badbuzz-target" class="w-full px-4 py-3 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 text-sm">
+                <option value="">-- Sélectionnez un Créateur --</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between border-t border-purple-200 pt-4">
+              <span class="text-xs font-medium text-purple-900">Coût d'attaque Drama: <strong class="text-purple-700 font-bold">150,00 €</strong></span>
+              <button type="submit" id="btn-badbuzz" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2.5 rounded-full shadow transition flex items-center gap-2">
+                <i class="fa-solid fa-bolt"></i> Lancer le Clash
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= 6. CONFIGURATION VIEW ================= -->
+      <section id="view-settings" class="tab-view hidden space-y-6 max-w-3xl mx-auto">
+        <div class="bg-white rounded-2xl p-6 border border-yt-border shadow-sm space-y-6">
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            <i class="fa-solid fa-gear text-yt-muted"></i> Configuration Serveur & Supabase
+          </h2>
+
+          <div class="space-y-4 text-xs">
+            <div class="p-4 bg-gray-50 border border-yt-border rounded-xl space-y-2">
+              <div class="font-bold text-sm">Paramètres de Connexion Supabase</div>
+              <p class="text-yt-muted">Les identifiants préconfigurés pour le serveur de jeu Tycoon.</p>
+              <div class="space-y-2 pt-2">
+                <div>
+                  <label class="block text-gray-500 mb-1">Supabase URL</label>
+                  <input type="text" id="cfg-url" class="w-full p-2 bg-white border border-yt-border rounded text-xs font-mono" readonly>
+                </div>
+                <div>
+                  <label class="block text-gray-500 mb-1">Anon / Publishable Key</label>
+                  <input type="text" id="cfg-key" class="w-full p-2 bg-white border border-yt-border rounded text-xs font-mono" readonly>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border border-yt-border rounded-xl space-y-2">
+              <div class="font-bold text-sm">Identifiant Créateur Unique</div>
+              <input type="text" id="cfg-creator-id" class="w-full p-2 bg-white border border-yt-border rounded text-xs font-mono" readonly>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- INITIAL CREATOR MODAL OVERLAY -->
+  <div id="modal-create-channel" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full border border-yt-border shadow-2xl space-y-6">
+      <div class="text-center space-y-2">
+        <div class="w-16 h-12 bg-yt-red text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto shadow-md">
+          <i class="fa-solid fa-play"></i>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight">Créer votre Chaîne</h2>
+        <p class="text-xs text-yt-muted">Entrez le nom de votre chaîne pour vous lancer dans l'aventure Tycoon !</p>
+      </div>
+
+      <form id="form-init-channel" onsubmit="handleCreateCreator(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-yt-muted mb-1">Nom de la chaîne</label>
+          <input type="text" id="init-channel-name" required placeholder="Ex: Squeezie Studio, TechCorp..."
+            class="w-full px-4 py-3 bg-gray-50 border border-yt-border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-yt-red text-sm">
+        </div>
+        <button type="submit" class="w-full bg-yt-red hover:bg-yt-darkred text-white font-bold py-3 rounded-full shadow-lg transition transform active:scale-95">
+          Démarrer ma carrière
+        </button>
+      </form>
     </div>
   </div>
 
-  <div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <div class="modal">
-      <h2 id="settingsTitle">🌐 Connexion au classement réel</h2>
-      <p>Pour réunir de vrais joueurs, crée un projet Supabase gratuit, exécute le fichier <b>setup.sql</b>, puis copie l'URL et la clé publique de ton projet ci-dessous. La clé secrète/service_role ne doit jamais être mise dans le navigateur.</p>
-      <div class="field"><label for="supabaseUrl">Project URL</label><input class="input" id="supabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="url"></div>
-      <div class="field"><label for="supabaseKey">Publishable key / anon key</label><input class="input" id="supabaseKey" placeholder="sb_publishable_… ou ancienne clé anon" autocomplete="off"></div>
-      <div class="warning">Le classement ne sera pas simulé : sans une connexion réussie à ta base, les scores en ligne resteront indisponibles. Active aussi les connexions anonymes dans Authentication → Sign In / Providers.</div>
-      <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="primary" id="saveConnectBtn">Enregistrer et connecter</button><button class="ghost" id="closeSettingsBtn">Fermer</button><button class="ghost" id="disconnectBtn" style="margin-left:auto">Effacer la configuration</button></div>
-      <p style="margin:16px 0 0">Guide : <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">ouvrir le tableau de bord Supabase ↗</a></p>
-    </div>
-  </div>
-  <div class="overlay" id="nameOverlay" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
-    <div class="modal">
-      <h2 id="nameTitle">Choisis ton pseudo de créateur</h2>
-      <p>Ce nom sera visible par les autres joueurs dans le classement et le fil d'activité. Ne mets pas d'informations personnelles.</p>
-      <form id="nameForm"><div class="field"><label for="creatorName">Pseudo (3 à 20 caractères)</label><input class="input" id="creatorName" minlength="3" maxlength="20" pattern="[A-Za-zÀ-ÿ0-9 _.-]{3,20}" required placeholder="PixelNova"></div><button class="primary full-btn" type="submit">Créer ma chaîne</button></form>
-    </div>
-  </div>
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
+  <!-- JAVASCRIPT GAME LOGIC & SUPABASE INTEGRATION -->
   <script>
-    (() => {
-      'use strict';
-      const CONFIG_KEY = 'creator-tycoon-supabase-config-v1';
-      // Configuration publique du serveur, intégrée pour tous les joueurs.
-      const DEFAULT_SUPABASE_URL = 'https://dwgxgyzrbsykqivklaox.supabase.co';
-      const DEFAULT_SUPABASE_KEY = 'sb_publishable_jo6dr7QzjxpUPNKuZzG3UQ_AuRk-DRC';
-      const $ = (id) => document.getElementById(id);
-      let client = null, currentUser = null, creator = null, world = null, leaderboard = [], refreshTimer = null, realtimeChannel = null, isBusy = false, videos = [], isRefreshing = false, simulationWarning = '', lastSimulationMessage = '';
-      const HTML_VERSION = 'progression-diagnostic-2026-10-24-v2';
-      const topicNames = {gaming:'Gaming', humour:'Humour', musique:'Musique', sport:'Sport', tech:'Tech', cuisine:'Cuisine', lifestyle:'Lifestyle'};
-      const formatNames = {short:'Shorts', long:'vidéos longues', live:'Lives'};
-      const claimNames = {copie:'Copie de contenu', pub:'Publicité cachée', ego:'Drama après une interview'};
-      const money = n => (Number(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:0}) + ' €';
-      const compact = n => Intl.NumberFormat('fr-FR',{notation:'compact',maximumFractionDigits:1}).format(Number(n)||0);
-      const exact = n => Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(n)||0);
-      function showToast(message, bad=false){const el=$('toast');el.textContent=message;el.style.borderColor=bad?'#a94d62':'#464a65';el.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove('show'),4500)}
-      function setStatus(ok, text){$('connectionStatus').classList.toggle('online',!!ok);$('connectionText').textContent=text}
-      function showSettings(){const saved=loadConfig();$('supabaseUrl').value=saved?.url||'';$('supabaseKey').value=saved?.key||'';$('settingsOverlay').classList.add('show')}
-      function loadConfig(){try{const saved=JSON.parse(localStorage.getItem(CONFIG_KEY)||'null');if(saved?.url&&saved?.key)return saved;}catch{}return {url:DEFAULT_SUPABASE_URL,key:DEFAULT_SUPABASE_KEY}}
-      function setBusy(b){isBusy=b;$('publishBtn').disabled=b;$('badBuzzBtn').disabled=b;$('saveConnectBtn').disabled=b;$('publishBtn').textContent=b?'Traitement…':'🚀 Publier la vidéo';}
-      function formatCash(n){return money(n)}
-      function formatTime(s){const d=new Date(s);return Number.isNaN(d.getTime())?'à l’instant':d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-      function updateStats(){
-        if(!creator){$('statSubs').textContent='—';$('statCash').textContent='—';$('statViews').textContent='—';$('statRank').textContent='Rang mondial : —';$('statVideos').textContent='Vidéos publiées : —';$('sidebarName').textContent='Créateur non connecté';$('sidebarLevel').textContent='Connecte-toi pour jouer';$('myRankBadge').textContent='Ton rang : —';return;}
-        $('sidebarName').textContent=creator.name;$('sidebarLevel').textContent=`Réputation : ${creator.reputation}/100`;$('statSubs').textContent=compact(creator.subscribers);$('statCash').textContent=formatCash(creator.cash);$('statViews').textContent=exact(creator.total_views);$('statVideos').textContent=`Vidéos publiées : ${creator.videos_count}`;
-        const idx=leaderboard.findIndex(c=>c.user_id===creator.user_id);const rank=idx<0?'—':`#${idx+1}`;$('statRank').textContent=`Rang mondial : ${rank}`;$('myRankBadge').textContent=`Ton rang : ${rank}`;
-      }
-      function updateWorld(){if(!world)return;$('seasonLabel').textContent=`semaine ${world.week_num}`;$('trendPill').textContent=`📈 Tendance : ${topicNames[world.trend_topic]||world.trend_topic}`;$('formatPill').textContent=`🔥 Format : ${formatNames[world.hot_format]||world.hot_format}`;const mood=Number(world.market_mood||1);$('moodPill').textContent=`🌍 Marché : ${mood>1.2?'en hausse':mood<.85?'difficile':'stable'} (${mood.toFixed(2)}×)`}
-      function renderLeaderboard(){
-        const list=$('rankList');list.replaceChildren();$('playerCount').textContent=`${leaderboard.length} joueur${leaderboard.length===1?'':'s'}`;
-        if(!leaderboard.length){const d=document.createElement('div');d.className='empty';d.textContent=client?'Aucun créateur dans ce serveur. Crée ta chaîne pour ouvrir le classement.':'Connexion requise : aucun faux score n’est affiché.';list.append(d);updateStats();renderTargetOptions();return;}
-        leaderboard.slice(0,20).forEach((c,i)=>{const row=document.createElement('div');row.className='rank-row'+(creator&&c.user_id===creator.user_id?' me':'');const rank=document.createElement('div');rank.className='rank-num '+(i===0?'gold':i===1?'silver':i===2?'bronze':'');rank.textContent=String(i+1);const meta=document.createElement('div');const name=document.createElement('div');name.className='rank-name';name.textContent=c.name+(creator&&c.user_id===creator.user_id?' · toi':'');const extra=document.createElement('div');extra.className='rank-extra';extra.textContent=`${compact(c.total_views)} vues · Rép. ${c.reputation}`;meta.append(name,extra);const subs=document.createElement('div');subs.className='rank-subs';subs.textContent=compact(c.subscribers);row.append(rank,meta,subs);list.append(row)});
-        updateStats();renderTargetOptions();
-      }
-      function renderTargetOptions(){const select=$('target');const old=select.value;select.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choisis un joueur dans le classement';select.append(placeholder);leaderboard.filter(c=>!creator||c.user_id!==creator.user_id).forEach(c=>{const o=document.createElement('option');o.value=c.user_id;o.textContent=`${c.name} · ${compact(c.subscribers)} abonnés`;select.append(o)});if([...select.options].some(o=>o.value===old))select.value=old; if(!select.options.length||select.options.length===1){select.options[0].textContent='Aucun autre joueur disponible';$('badBuzzBtn').disabled=true}else if(!isBusy){$('badBuzzBtn').disabled=false}}
-      function renderFeed(rows){const root=$('activityFeed');root.replaceChildren();if(!rows||!rows.length){const d=document.createElement('div');d.className='empty';d.textContent='Pas encore d’activité. La première publication lancera le fil global.';root.append(d);return;}rows.forEach(e=>{const item=document.createElement('div');item.className='feed-item'+(e.event_type==='badbuzz'?' bad':'');const p=document.createElement('p');p.textContent=e.message;const time=document.createElement('time');time.textContent=formatTime(e.created_at);item.append(p,time);root.append(item)})}
-      function renderVideos(rows){const root=$('videoList');root.replaceChildren();if(!rows||!rows.length){const d=document.createElement('div');d.className='empty';d.textContent='Tu n’as pas encore publié de vidéo. Publie ta première vidéo pour commencer à suivre ses statistiques.';root.append(d);return;}rows.forEach(v=>{const item=document.createElement('div');item.className='feed-item';const p=document.createElement('p');p.innerHTML='';const title=document.createElement('b');title.textContent='🎬 '+v.title;const stats=document.createElement('p');stats.style.marginTop='7px';stats.textContent=`${topicNames[v.topic]||v.topic} · ${formatNames[v.format]||v.format}\n👁️ ${exact(v.views)} vues · 👥 +${exact(v.subscribers_gained)} abonnés · 💶 ${money(v.revenue)} de revenus`;stats.style.whiteSpace='pre-line';const time=document.createElement('time');time.textContent='Publiée le '+formatTime(v.created_at);p.append(title);item.append(p,stats,time);root.append(item)})}
-      async function loadVideos(){if(!client||!currentUser||!creator){videos=[];renderVideos([]);return;}const {data,error}=await client.from('videos').select('id,title,topic,format,views,subscribers_gained,revenue,created_at').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(50);if(error)throw error;videos=data||[];renderVideos(videos)}
-      async function loadCreator(){if(!client||!currentUser)return;const {data,error}=await client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle();if(error)throw error;creator=data;updateStats();if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show')}
-      async function refreshAll(){
-        if(!client || isRefreshing) return;
-        isRefreshing = true;
-        try {
-          // La simulation est indépendante du chargement de l'interface : si le RPC manque,
-          // le jeu reste consultable et affiche un diagnostic au lieu de bloquer tout le tableau.
-          if(currentUser){
-            const {data:simData,error:simError}=await client.rpc('advance_creator_simulation');
-            simulationWarning = simError ? (simError.message || String(simError)) : '';
-            const statusEl = $('simulationStatus');
-            statusEl.classList.toggle('error', !!simError);
-            if(simError){
-              lastSimulationMessage = '❌ La fonction Supabase de progression a échoué : ' + simulationWarning;
-              statusEl.textContent = lastSimulationMessage + ' (HTML ' + HTML_VERSION + ')';
-              console.error('Progression automatique indisponible:', simError);
-            } else {
-              const mins = Number(simData?.minutes ?? 0);
-              const gainedViews = Number(simData?.views_gained ?? 0);
-              const gainedSubs = Number(simData?.subscribers_gained ?? 0);
-              const gainedCash = Number(simData?.revenue ?? 0);
-              if(mins >= 1){
-                lastSimulationMessage = gainedViews > 0
-                  ? `✅ Progression exécutée : +${exact(gainedViews)} vues, +${exact(gainedSubs)} abonnés et +${money(gainedCash)} sur ${mins} minute(s).`
-                  : `⚠️ La fonction SQL s’est exécutée pour ${mins} minute(s), mais a ajouté 0 vue. Cela indique généralement qu’aucune vidéo n’est associée à ce profil dans la base.`;
-              } else if(!lastSimulationMessage){
-                lastSimulationMessage = '✅ Fonction appelée. Elle calcule les gains par minutes entières : attends au moins 1 minute après la première connexion.';
-              }
-              statusEl.textContent = lastSimulationMessage + ' (HTML ' + HTML_VERSION + ')';
+    // ----------------------------------------------------
+    // REALTIME SUBSCRIPTIONS & POLLING FALLBACK
+    // ----------------------------------------------------
+    function setupRealtimeSubscriptions() {
+      if (!supabaseClient) return;
+
+      // Try setting up Realtime subscriptions, but gracefully catch WebSocket restrictions in Canvas
+      try {
+        supabaseClient
+          .channel('public:creators')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'creators' }, (payload) => {
+            if (currentCreator && payload.new && payload.new.id === currentCreator.id) {
+              currentCreator = payload.new;
+              updateUI();
             }
-          } else {
-            $('simulationStatus').textContent = 'Progression automatique : pas encore de session joueur. (HTML ' + HTML_VERSION + ')';
-          }
-          const [worldRes,creatorRes,rankRes,eventRes,videosRes]=await Promise.all([
-            client.from('world_state').select('*').eq('id',1).single(),
-            currentUser?client.from('creators').select('*').eq('user_id',currentUser.id).maybeSingle():Promise.resolve({data:null,error:null}),
-            client.from('creators').select('user_id,name,subscribers,total_views,videos_count,reputation,cash,created_at').order('subscribers',{ascending:false}).order('total_views',{ascending:false}).limit(100),
-            client.from('game_events').select('id,event_type,message,created_at').order('created_at',{ascending:false}).limit(8),
-            currentUser?client.from('videos').select('id,title,topic,format,views,subscribers_gained,revenue,created_at').eq('owner_id',currentUser.id).order('created_at',{ascending:false}).limit(50):Promise.resolve({data:[],error:null})
-          ]);
-          if(worldRes.error)throw worldRes.error;
-          if(creatorRes.error)throw creatorRes.error;
-          if(rankRes.error)throw rankRes.error;
-          if(eventRes.error)throw eventRes.error;
-          if(videosRes.error)throw videosRes.error;
-          world=worldRes.data;creator=creatorRes.data;leaderboard=rankRes.data||[];videos=videosRes.data||[];
-          updateWorld();renderLeaderboard();renderFeed(eventRes.data||[]);renderVideos(videos);
-          setStatus(true,`En ligne · ${leaderboard.length} joueurs`);
-          if(simulationWarning){
-            $('offlineBanner').classList.remove('hidden');
-            $('offlineBanner').textContent='Le jeu est connecté, mais la progression automatique des vidéos est bloquée. Erreur Supabase : '+simulationWarning+'. Si le message mentionne advance_creator_simulation ou last_simulated_at, la mise à jour SQL de progression n’est pas disponible sur ce projet.';
-          } else {
-            $('offlineBanner').classList.add('hidden');
-          }
-          if(!creator)$('nameOverlay').classList.add('show');else $('nameOverlay').classList.remove('show');
-        } catch(err) {
-          console.error(err);setStatus(false,'Erreur de synchronisation');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='La connexion au serveur a échoué : '+(err.message||'vérifie le projet Supabase et les tables de base.');throw err;
-        } finally { isRefreshing = false; }
+            refreshLeaderboard();
+          })
+          .subscribe((status, err) => {
+            if (status === 'CHANNEL_ERROR' || err) {
+              console.warn("Realtime channel error, using polling instead:", err);
+            }
+          });
+
+        supabaseClient
+          .channel('public:world_state')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'world_state' }, (payload) => {
+            if (payload.new) {
+              worldState = payload.new;
+              renderMarketTrends();
+            }
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn("WebSocket not supported or allowed in this environment. Falling back to polling.", err);
       }
-      async function connect(url,key){
-        if(!window.supabase||!window.supabase.createClient)throw new Error('La bibliothèque Supabase ne s’est pas chargée. Vérifie ta connexion internet puis recharge la page.');
-        if(!url.startsWith('https://')||!url.includes('.supabase.co'))throw new Error('URL Supabase invalide. Elle ressemble à https://xxxx.supabase.co');
-        if(!key.trim())throw new Error('Colle la clé publique (publishable/anon) de ton projet.');
-        if(client){try{await client.auth.signOut()}catch{}}
-        client=window.supabase.createClient(url.trim().replace(/\/$/,''),key.trim(),{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-        setStatus(false,'Connexion en cours…');
-        const {data:sessionData,error:sessionError}=await client.auth.getSession();if(sessionError)throw sessionError;
-        if(sessionData.session){currentUser=sessionData.session.user}else{const {data,error}=await client.auth.signInAnonymously();if(error)throw error;currentUser=data.user}
-        $('settingsOverlay').classList.remove('show');
-        try{await refreshAll()}catch(e){throw e}
-        if(realtimeChannel){try{await client.removeChannel(realtimeChannel)}catch{}}
-        realtimeChannel=client.channel('creator-tycoon-live').on('postgres_changes',{event:'*',schema:'public',table:'creators'},()=>refreshAll()).on('postgres_changes',{event:'*',schema:'public',table:'world_state'},()=>refreshAll()).on('postgres_changes',{event:'*',schema:'public',table:'game_events'},()=>refreshAll()).subscribe();
-        clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,20000);
+
+      // Start periodic polling as a reliable fallback for preview / canvas environments
+      setInterval(async () => {
+        if (currentCreator) {
+          await loadCreatorData(currentCreator.id);
+        }
+      }, 10000); // Refresh every 10 seconds
+    }
+
+    // ----------------------------------------------------
+    // VIDEO PUBLISHING (STUDIO)
+    // ----------------------------------------------------
+    function updateStudioCalculations() {
+      const qualityLevel = parseInt(document.getElementById('video-quality').value) || 1;
+      const promoBudget = parseFloat(document.getElementById('video-promo').value) || 0;
+
+      const qualityCosts = [0, 0, 50, 150, 300, 500];
+      const qualityCost = qualityCosts[qualityLevel] || 0;
+      const totalCost = qualityCost + promoBudget;
+
+      document.getElementById('quality-val-display').textContent = `Niveau ${qualityLevel}`;
+      document.getElementById('promo-val-display').textContent = formatCurrency(promoBudget);
+      document.getElementById('total-production-cost').textContent = formatCurrency(totalCost);
+
+      if (currentCreator) {
+        document.getElementById('studio-current-cash').textContent = formatCurrency(currentCreator.cash);
       }
-      $('settingsBtn').addEventListener('click',showSettings);
-      $('closeSettingsBtn').addEventListener('click',()=>$('settingsOverlay').classList.remove('show'));
-      $('settingsOverlay').addEventListener('click',e=>{if(e.target===$('settingsOverlay'))$('settingsOverlay').classList.remove('show')});
-      $('saveConnectBtn').addEventListener('click',async()=>{const url=$('supabaseUrl').value.trim(),key=$('supabaseKey').value.trim();try{setBusy(true);localStorage.setItem(CONFIG_KEY,JSON.stringify({url,key}));await connect(url,key);showToast('Connexion réussie : tu utilises maintenant le classement partagé.');}catch(e){console.error(e);setStatus(false,'Connexion échouée');showToast(e.message||'Impossible de se connecter.',true);$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie l’URL, la clé, les réglages Supabase et setup.sql');}finally{setBusy(false)}});
-      $('disconnectBtn').addEventListener('click',()=>{localStorage.removeItem(CONFIG_KEY);if(client){try{client.removeAllChannels()}catch{}}client=null;currentUser=null;creator=null;world=null;leaderboard=[];setStatus(false,'Serveur non configuré');$('settingsOverlay').classList.remove('show');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Configuration effacée. Le classement réel est masqué jusqu’à la reconnexion.';renderLeaderboard();renderFeed([]);updateStats();showToast('Configuration locale effacée.')});
-      $('quality').addEventListener('input',()=>$('qualityValue').textContent=$('quality').value+' / 5');$('promo').addEventListener('input',()=>$('promoValue').textContent=money($('promo').value));
-      $('nameForm').addEventListener('submit',async e=>{e.preventDefault();if(!client)return;const name=$('creatorName').value.trim();try{setBusy(true);const {data,error}=await client.rpc('create_creator',{p_name:name});if(error)throw error;creator=data; $('nameOverlay').classList.remove('show');await refreshAll();showToast(`Bienvenue ${creator.name} ! Ta chaîne est enregistrée en ligne.`)}catch(err){showToast(err.message||'Impossible de créer ce pseudo.',true)}finally{setBusy(false)}});
-      $('videoForm').addEventListener('submit',async e=>{e.preventDefault();if(!client||!creator){showToast('Connecte ton serveur et crée ta chaîne pour publier.',true);if(!client)showSettings();else $('nameOverlay').classList.add('show');return}try{setBusy(true);const args={p_title:$('videoTitle').value.trim(),p_topic:$('topic').value,p_format:$('format').value,p_quality:Number($('quality').value),p_promo:Number($('promo').value)};const {data,error}=await client.rpc('publish_video',args);if(error)throw error;$('videoTitle').value='';await refreshAll();const video=data?.video||data;showToast(`Vidéo publiée ! ${compact(video.views||0)} vues · +${compact(video.subscribers_gained||0)} abonnés · revenus ${money(video.revenue||0)}.`)}catch(err){showToast(err.message||'La publication a échoué.',true)}finally{setBusy(false)}});
-      $('badBuzzForm').addEventListener('submit',async e=>{e.preventDefault();if(!client||!creator){showToast('Connecte-toi et crée une chaîne avant cette action.',true);return}const target=$('target').value;if(!target){showToast('Choisis un autre joueur présent dans le classement.',true);return}try{setBusy(true);const {data,error}=await client.rpc('launch_badbuzz',{p_target_id:target,p_claim:$('claim').value});if(error)throw error;await refreshAll();showToast(data?.message||'Action de bad buzz enregistrée.')}catch(err){showToast(err.message||'Impossible de lancer ce bad buzz.',true)}finally{setBusy(false)}});
-      document.querySelectorAll('[data-scroll]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-scroll]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');$(btn.dataset.scroll).scrollIntoView({behavior:'smooth',block:'start'})}));
-      (async()=>{const cfg=loadConfig();if(cfg?.url&&cfg?.key){$('supabaseUrl').value=cfg.url;$('supabaseKey').value=cfg.key;try{await connect(cfg.url,cfg.key)}catch(e){console.warn(e);setStatus(false,'Connexion requise');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie les réglages Supabase');}}else{setStatus(false,'Connexion en cours…');renderLeaderboard();renderFeed([]);try{localStorage.setItem(CONFIG_KEY,JSON.stringify({url:DEFAULT_SUPABASE_URL,key:DEFAULT_SUPABASE_KEY}));await connect(DEFAULT_SUPABASE_URL,DEFAULT_SUPABASE_KEY)}catch(e){console.warn(e);setStatus(false,'Connexion requise');$('offlineBanner').classList.remove('hidden');$('offlineBanner').textContent='Connexion impossible : '+(e.message||'vérifie les réglages Supabase');}}})();
-    })();
+    }
+
+    async function handlePublishVideo(e) {
+      e.preventDefault();
+      if (!currentCreator) return;
+
+      const title = document.getElementById('video-title').value.trim();
+      const topic = document.getElementById('video-topic').value;
+      const format = document.getElementById('video-format').value;
+      const quality = parseInt(document.getElementById('video-quality').value) || 1;
+      const promoBudget = parseFloat(document.getElementById('video-promo').value) || 0;
+
+      const qualityCosts = [0, 0, 50, 150, 300, 500];
+      const totalCost = (qualityCosts[quality] || 0) + promoBudget;
+
+      if (currentCreator.cash < totalCost) {
+        showToast('Fonds insuffisants pour produire cette vidéo !', 'error');
+        return;
+      }
+
+      const publishBtn = document.getElementById('btn-publish');
+      publishBtn.disabled = true;
+      publishBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Publication...`;
+
+      try {
+        const { data, error } = await supabaseClient.rpc('publish_video', {
+          p_creator_id: currentCreator.id,
+          p_title: title,
+          p_topic: topic,
+          p_format: format,
+          p_quality: quality,
+          p_promo_budget: promoBudget
+        });
+
+        if (error) throw error;
+
+        showToast('Vidéo mise en ligne avec succès ! 🚀', 'success');
+        document.getElementById('form-create-video').reset();
+        updateStudioCalculations();
+
+        // Refresh Data
+        await loadCreatorData(currentCreator.id);
+        switchTab('videos');
+
+      } catch (err) {
+        console.error("Publish Video Error:", err);
+        showToast(err.message || 'Erreur lors de la publication', 'error');
+      } finally {
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = `<i class="fa-solid fa-upload"></i><span>Mettre en Ligne</span>`;
+      }
+    }
+
+    // ----------------------------------------------------
+    // BAD BUZZ & DRAMAS
+    // ----------------------------------------------------
+    async function handleLaunchBadBuzz(e) {
+      e.preventDefault();
+      if (!currentCreator) return;
+
+      const targetId = document.getElementById('badbuzz-target').value;
+      if (!targetId) {
+        showToast('Veuillez sélectionner un créateur cible', 'error');
+        return;
+      }
+
+      if (currentCreator.cash < 150) {
+        showToast('Il vous faut au moins 150,00 € pour financer une campagne Drama', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-badbuzz');
+      btn.disabled = true;
+
+      try {
+        const { data, error } = await supabaseClient.rpc('launch_badbuzz', {
+          p_attacker_id: currentCreator.id,
+          p_target_id: targetId
+        });
+
+        if (error) throw error;
+
+        showToast('Clash lancé ! Regardez le classement évoluer 🔥', 'success');
+        await loadCreatorData(currentCreator.id);
+
+      } catch (err) {
+        console.error("BadBuzz Error:", err);
+        showToast(err.message || 'Erreur lors du lancement du Bad Buzz', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ----------------------------------------------------
+    // FETCH DATA & UI REFRESH
+    // ----------------------------------------------------
+    async function fetchCreatorVideos(creatorId) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('videos')
+          .select('*')
+          .eq('creator_id', creatorId)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          creatorVideos = data;
+        }
+      } catch (err) {
+        console.error("Error fetching videos:", err);
+      }
+    }
+
+    async function refreshLeaderboard() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('creators')
+          .select('id, channel_name, subscribers, cash')
+          .order('subscribers', { ascending: false })
+          .limit(20);
+
+        if (!error && data) {
+          leaderboardData = data;
+          renderLeaderboard();
+          updateBadBuzzTargets();
+        }
+      } catch (err) {
+        console.error("Leaderboard error:", err);
+      }
+    }
+
+    // ----------------------------------------------------
+    // UI RENDERING FUNCTIONS
+    // ----------------------------------------------------
+    function updateUI() {
+      if (!currentCreator) return;
+
+      // Header UI
+      document.getElementById('creator-name-header').textContent = currentCreator.channel_name || 'Mon Studio';
+      document.getElementById('creator-avatar').textContent = (currentCreator.channel_name || 'Y')[0].toUpperCase();
+      document.getElementById('top-subscribers').textContent = formatNumber(currentCreator.subscribers);
+      document.getElementById('top-cash').textContent = formatCurrency(currentCreator.cash);
+
+      // Dashboard View UI
+      document.getElementById('dash-channel-title').textContent = currentCreator.channel_name;
+      document.getElementById('dash-level-badge').textContent = `Niveau ${currentCreator.level || 1}`;
+      document.getElementById('kpi-subscribers').textContent = formatNumber(currentCreator.subscribers);
+      document.getElementById('kpi-cash').textContent = formatCurrency(currentCreator.cash);
+
+      // Total views calculation
+      const totalViews = creatorVideos.reduce((sum, v) => sum + (v.views || 0), 0);
+      document.getElementById('kpi-views').textContent = formatNumber(totalViews);
+
+      // Calculate Rank
+      if (leaderboardData.length > 0) {
+        const myRank = leaderboardData.findIndex(c => c.id === currentCreator.id) + 1;
+        document.getElementById('kpi-rank').textContent = myRank > 0 ? `#${myRank}` : '#-';
+      }
+
+      // Render Video Grid & Activity
+      renderVideosGrid();
+      renderActivityLog();
+      renderMarketTrends();
+    }
+
+    function renderVideosGrid() {
+      const container = document.getElementById('videos-grid');
+      if (!creatorVideos || creatorVideos.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 text-center text-yt-muted bg-white rounded-2xl border border-yt-border space-y-3">
+            <i class="fa-solid fa-film text-4xl text-gray-300"></i>
+            <p class="text-sm">Vous n'avez pas encore publié de vidéo.</p>
+            <button onclick="switchTab('studio')" class="px-4 py-2 bg-yt-red text-white font-medium text-xs rounded-full shadow hover:bg-yt-darkred transition">
+              Publier ma première vidéo
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = creatorVideos.map(video => {
+        const formatBadgeColor = video.format === 'Short' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
+        return `
+          <div class="bg-white rounded-2xl border border-yt-border overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
+            <!-- Simulated Video Thumbnail -->
+            <div class="video-thumbnail bg-gradient-to-br from-gray-800 to-gray-900 relative flex items-center justify-center p-4 text-white">
+              <span class="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${formatBadgeColor}">
+                ${video.format || 'Standard'}
+              </span>
+              <span class="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-[10px] rounded font-mono">
+                ${video.topic || 'Général'}
+              </span>
+              <div class="text-center space-y-1">
+                <i class="fa-solid fa-play text-2xl text-yt-red opacity-80"></i>
+                <h4 class="font-bold text-xs line-clamp-2 px-2">${escapeHtml(video.title)}</h4>
+              </div>
+            </div>
+
+            <!-- Content Details -->
+            <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+              <div>
+                <h3 class="font-bold text-sm text-yt-text line-clamp-1">${escapeHtml(video.title)}</h3>
+                <span class="text-[11px] text-yt-muted">${new Date(video.created_at).toLocaleDateString('fr-FR')}</span>
+              </div>
+
+              <!-- Stats -->
+              <div class="grid grid-cols-3 gap-2 pt-2 border-t border-yt-border text-center text-xs">
+                <div>
+                  <span class="block text-[10px] text-yt-muted uppercase">Vues</span>
+                  <span class="font-extrabold text-yt-text">${formatNumber(video.views)}</span>
+                </div>
+                <div>
+                  <span class="block text-[10px] text-yt-muted uppercase">Abonnés</span>
+                  <span class="font-extrabold text-emerald-600">+${formatNumber(video.subscribers_gained)}</span>
+                </div>
+                <div>
+                  <span class="block text-[10px] text-yt-muted uppercase">Revenus</span>
+                  <span class="font-extrabold text-yt-text">${formatCurrency(video.revenue)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderLeaderboard() {
+      const tbody = document.getElementById('leaderboard-table-body');
+      if (!leaderboardData || leaderboardData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-yt-muted">Aucun créateur enregistré.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = leaderboardData.map((creator, idx) => {
+        const isMe = currentCreator && creator.id === currentCreator.id;
+        const rank = idx + 1;
+
+        let rankBadgeClass = "bg-gray-100 text-gray-700";
+        if (rank === 1) rankBadgeClass = "bg-amber-100 text-amber-800 font-bold";
+        else if (rank === 2) rankBadgeClass = "bg-slate-200 text-slate-800 font-bold";
+        else if (rank === 3) rankBadgeClass = "bg-amber-700/10 text-amber-900 font-bold";
+
+        return `
+          <tr class="${isMe ? 'bg-red-50/60 font-semibold' : 'hover:bg-yt-hover'} transition">
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${rankBadgeClass}">
+                ${rank}
+              </span>
+            </td>
+            <td class="py-3 px-4 flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-yt-red text-white flex items-center justify-center text-xs font-bold shrink-0">
+                ${(creator.channel_name || 'Y')[0].toUpperCase()}
+              </div>
+              <span class="truncate max-w-[180px]">${escapeHtml(creator.channel_name)}</span>
+              ${isMe ? '<span class="text-[10px] bg-yt-red text-white px-1.5 py-0.5 rounded font-bold">VOUS</span>' : ''}
+            </td>
+            <td class="py-3 px-4 text-right font-mono text-xs font-bold">${formatNumber(creator.subscribers)}</td>
+            <td class="py-3 px-4 text-right font-mono text-xs text-emerald-700">${formatCurrency(creator.cash)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderMarketTrends() {
+      const container = document.getElementById('market-trends-container');
+      const trends = ['Gaming', 'Tech', 'Vlog', 'Drama', 'Humour'];
+      const activeTrend = worldState?.trending_topic || 'Gaming';
+
+      container.innerHTML = trends.map(t => {
+        const isHot = t === activeTrend;
+        return `
+          <span class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition ${isHot ? 'bg-yt-red text-white shadow-sm' : 'bg-gray-100 text-yt-muted'}">
+            ${isHot ? '<i class="fa-solid fa-fire text-amber-300"></i>' : ''}
+            ${t}
+            ${isHot ? '<span class="text-[9px] bg-white/20 px-1 rounded">2x Vues</span>' : ''}
+          </span>
+        `;
+      }).join('');
+    }
+
+    function renderActivityLog() {
+      const container = document.getElementById('activity-log');
+      if (!creatorVideos || creatorVideos.length === 0) {
+        container.innerHTML = `<div class="p-3 bg-gray-50 rounded-xl text-xs text-yt-muted text-center">Aucune activité récente.</div>`;
+        return;
+      }
+
+      container.innerHTML = creatorVideos.slice(0, 5).map(v => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-xs hover:bg-gray-100 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-red-100 text-yt-red flex items-center justify-center font-bold">
+              <i class="fa-solid fa-video"></i>
+            </div>
+            <div>
+              <div class="font-bold text-yt-text line-clamp-1">${escapeHtml(v.title)}</div>
+              <div class="text-[10px] text-yt-muted">${new Date(v.created_at).toLocaleTimeString('fr-FR')}</div>
+            </div>
+          </div>
+          <div class="text-right font-mono">
+            <span class="block text-emerald-600 font-bold">+${formatCurrency(v.revenue)}</span>
+            <span class="text-[10px] text-yt-muted">${formatNumber(v.views)} views</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateBadBuzzTargets() {
+      const select = document.getElementById('badbuzz-target');
+      if (!leaderboardData) return;
+
+      const targets = leaderboardData.filter(c => !currentCreator || c.id !== currentCreator.id);
+      select.innerHTML = '<option value="">-- Sélectionnez un Créateur --</option>' +
+        targets.map(t => `<option value="${t.id}">${escapeHtml(t.channel_name)} (${formatNumber(t.subscribers)} abonnés)</option>`).join('');
+    }
+
+    // ----------------------------------------------------
+    // NAVIGATION & UTILS
+    // ----------------------------------------------------
+    function switchTab(tabId) {
+      activeTab = tabId;
+
+      // Hide all tabs
+      document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active-nav'));
+
+      // Show selected
+      const targetView = document.getElementById(`view-${tabId}`);
+      const targetNav = document.getElementById(`nav-${tabId}`);
+
+      if (targetView) targetView.classList.remove('hidden');
+      if (targetNav) targetNav.classList.add('active-nav');
+
+      // Tab specific refresh
+      if (tabId === 'leaderboard') refreshLeaderboard();
+    }
+
+    function updateStatusPill(online, text) {
+      const pill = document.getElementById('status-pill');
+      const statusText = document.getElementById('status-text');
+      statusText.textContent = text;
+
+      if (online) {
+        pill.className = 'hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium';
+      } else {
+        pill.className = 'hidden sm:flex items-center gap-2 px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-medium';
+      }
+    }
+
+    function updateDiagnostic(msg) {
+      document.getElementById('diagnostic-msg').textContent = msg;
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const bgClass = type === 'error' ? 'bg-red-600 text-white' : type === 'success' ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-white';
+      toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-lg text-xs font-medium flex items-center gap-2 transition-all transform translate-y-2 pointer-events-auto`;
+      toast.innerHTML = `
+        <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-circle-check' : 'fa-info-circle'}"></i>
+        <span>${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Toggle Sidebar Collapsed State
+    document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('w-64');
+      sidebar.classList.toggle('w-16');
+      document.querySelectorAll('.nav-label').forEach(el => el.classList.toggle('hidden'));
+    });
   </script>
 </body>
 </html>
